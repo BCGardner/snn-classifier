@@ -92,7 +92,7 @@ class Network(object):
         Outputs
         -------
         spiked_l : list
-            List of boolean spike trains in layers l > 1.
+            List of boolean spike trains in layers l > 0.
         rec : dict, optional
             Debug recordings containing
             {hidden layer psps 'psp', potential 'u', bool spike trains 'S'}.
@@ -156,7 +156,7 @@ class Network(object):
 
         # === Gather output spike trains ==================================== #
 
-        # Spike trains: l > 1
+        # Spike trains: l > 0
         spike_trains_l = []
         for spiked in spiked_l:
             spike_trains_l.append([np.where(isspike)[0] * self.dt
