@@ -12,8 +12,8 @@ import os
 
 import numpy as np
 
-import feature_preprocess as f_p
-import helpers as hp
+import snncls.feature_preprocess as f_p
+import snncls.helpers as hp
 
 
 def load_data_wrapper(data_id, f_transform=f_p.standardize):
@@ -42,8 +42,8 @@ def load_data_wrapper(data_id, f_transform=f_p.standardize):
 def load_data_spiking(data_id, param):
     """
     Loads a dataset in form of 2-tuple: (X, y), preprocesses features, changes
-    format of data, and returns a list of 2-tuples [(X1, y1), (X2, y2), ...].
-    This is for a spiking classifier.
+    format of data, and returns predetermined PSPs evoked due to input layer,
+    assuming current-based LIF-type neurons in the network.
 
     Inputs
     ------
@@ -51,6 +51,15 @@ def load_data_spiking(data_id, param):
         Name of dataset.
     param : container
         Using dt and paramsets: pattern, cell.
+
+    Outputs
+    -------
+    training_data : list
+        List of 2-tuples [(X1, y1), ...], where X's are evoked PSPs due to
+        input layer, and Y's are one-hot encoded class labels. X and Y are of
+        size <num_inputs> by <num_iter> and <num_classes>, respectively.
+    data_inputs : list
+        List of spike latency arrays, each of size <num_inputs> by <1>.
     """
     # Load dataset
     dataset = load_data_file(data_id)
@@ -66,7 +75,6 @@ def load_data_spiking(data_id, param):
     data_inputs = [np.reshape(x, (-1, 1)) for x in data_inputs]
     # Transform each target vector to size: <n_activations> by <n_cases>
     data_targets = list(data_targets)
-#    data_targets = [np.reshape(y, (-1, 1)) for y in data_targets]
     # Predetermine input PSPs
     psp_inputs = f_p.predet_psp(data_inputs, dt, duration, cell_params)
     # List of 2-tuples: [(input1, target1), ...]
