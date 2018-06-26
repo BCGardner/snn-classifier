@@ -2,3 +2,4 @@
 *.pyc
 .spyproject
 **/out/
+.pytest_cache
