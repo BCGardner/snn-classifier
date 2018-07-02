@@ -3,3 +3,4 @@
 .spyproject
 **/out/
 .pytest_cache
+*.pdf
