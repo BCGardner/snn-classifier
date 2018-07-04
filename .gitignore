@@ -4,3 +4,4 @@
 **/out/
 .pytest_cache
 *.pdf
+!fig_*.pdf
