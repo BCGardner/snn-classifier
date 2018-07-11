@@ -42,8 +42,9 @@ class SimParam(object):
                              'l2_pen': 1E-3,        # L2 weight penalty term
                              'syn_scale': 0.1})     # Synaptic scaling
         # Patterns
-        self.pattern = ParamSet({'neurons_f': 6,
-                                 'duration': 40.})
+        self.pattern = ParamSet({'neurons_f': 6,    # num. encoding nrns
+                                 'beta': 1.5,       # width receptive fields
+                                 'duration': 40.})  # sim. runtime per pattern
 
     def update(self, **kwargs):
         """

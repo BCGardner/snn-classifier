@@ -63,7 +63,7 @@ def onehot_encode(y):
     return y_
 
 
-def receptive_fields(x, neurons_f=12):
+def receptive_fields(x, neurons_f=12, beta=1.5):
     """
     Convert input vectors into spike latencies based on Gaussian receptive
     fields.
@@ -71,14 +71,16 @@ def receptive_fields(x, neurons_f=12):
     Inputs
     ------
     x : array
-        Input data: <examples> by <features>.
+        Input data: <num_samples> by <num_features>.
     neurons_f : int
         Neurons encoding each feature.
+    beta : float
+        Width of Gaussian receptive field.
 
     Output
     ------
-    spike_trains : list
-        List of arrays: <examples> by <encoding_neurons>.
+    spike_trains : array
+        List of arrays: <num_samples> by <num_encoding_neurons>.
     """
     m = x.shape[0]
     n = x.shape[1]
@@ -86,7 +88,7 @@ def receptive_fields(x, neurons_f=12):
     x_min, x_max = np.min(x, 0, keepdims=True).T, np.max(x, 0, keepdims=True).T
     indices = np.arange(1, neurons_f+1)
     centers = x_min + (2*indices - 3) / 2. * (x_max - x_min) / (neurons_f - 2)
-    sigmas = 2 / 3. * (x_max - x_min) / (neurons_f - 2)
+    sigmas = 1. / beta * (x_max - x_min) / (neurons_f - 2)
     # Intensity of responses
     spikes = np.empty((m, neurons_f * n))
     for f in xrange(n):
