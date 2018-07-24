@@ -46,6 +46,7 @@ class Network(object):
         self.cell_params = param.cell
         self.w_h_init = param.net['w_h_init']
         self.w_o_init = param.net['w_o_init']
+        self.w_bounds = param.net['w_bounds']
         # Hidden neuron model
         self.neuron_h = EscapeRate(param.cell['theta'])
         # Optimisations
@@ -68,6 +69,10 @@ class Network(object):
         # to a uniform distribution
         if weights is not None:
             self.w = weights
+            # Weight bound constraints
+            for w in self.w:
+                assert np.all(w >= self.w_bounds[0])
+                assert np.all(w <= self.w_bounds[1])
         else:
             self.w = []
             # Hidden layers
@@ -76,6 +81,8 @@ class Network(object):
             # Output layer
             self.w.append(self.rng.uniform(*self.w_o_init,
                                            size=self.sizes[-1:-3:-1]))
+            # Clip out-of-bound weights
+            self.clip_weights()
 
     def simulate(self, psp_inputs, debug=False):
         """
@@ -171,6 +178,14 @@ class Network(object):
         Convert a sequence of spike times to their time_steps.
         """
         return np.round(spike_times / self.dt).astype(int)
+
+    def clip_weights(self):
+        """
+        Clip out-of-bound weights in each layer.
+        """
+        for w in self.w:
+            w[w < self.w_bounds[0]] = self.w_bounds[0]
+            w[w > self.w_bounds[1]] = self.w_bounds[1]
 
 
 class NetworkDelay(object):

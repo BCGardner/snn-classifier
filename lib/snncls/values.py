@@ -38,6 +38,7 @@ class SimParam(object):
         # Network (based on iris dataset with latency decoding)
         self.net = ParamSet({'w_h_init': (0.0, 2.0),  # Initial hidden weights
                              'w_o_init': (0.0, 4.0),  # Initial output weights
+                             'w_bounds': (-np.inf, np.inf),  # Weight bounds
                              'eta0': 300.,          # Learning rate
                              'l2_pen': 1E-3,        # L2 weight penalty term
                              'syn_scale': 0.1})     # Synaptic scaling
