@@ -32,13 +32,17 @@ def load_data(path):
     return data
 
 
-def mean_errs(data):
+def mean_accs(data, k='tr_err'):
     """
-    Return 2D array of average training errors, given 2D array of dictionaries
-    containing 'tr_err' key.
+    Return 2D array of average accuracies and associated SEMs,
+    given 2D array of dictionaries containing a given errors key.
     """
     num_rows, num_cols = data.shape
-    tr_errs_av = np.zeros((num_rows, num_cols))
+    num_runs = len(data[0, 0][k])
+    accuracies = np.zeros((num_rows, num_cols, 2))
     for i, j in itertools.product(xrange(num_rows), xrange(num_cols)):
-        tr_errs_av[i, j] = np.mean(data[i, j]['tr_err'])
-    return tr_errs_av
+        accuracies[i, j, 0] = np.mean(100. - data[i, j][k])
+        accuracies[i, j, 1] = np.std(100. - data[i, j][k])
+    # Return SEMs
+    accuracies[:, :, 1] /= np.sqrt(num_runs)
+    return accuracies
