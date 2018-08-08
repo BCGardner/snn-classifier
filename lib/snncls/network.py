@@ -183,9 +183,7 @@ class Network(object):
         """
         Clip out-of-bound weights in each layer.
         """
-        for w in self.w:
-            w[w < self.w_bounds[0]] = self.w_bounds[0]
-            w[w > self.w_bounds[1]] = self.w_bounds[1]
+        [np.clip(w, self.w_bounds[0], self.w_bounds[1], w) for w in self.w]
 
 
 class NetworkDelay(object):
