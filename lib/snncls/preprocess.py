@@ -12,6 +12,8 @@ from __future__ import division
 
 import numpy as np
 
+from snncls.parameters import ParamSet
+
 
 class ReceptiveFields(object):
     """
@@ -109,6 +111,55 @@ class ReceptiveFields(object):
 
     def get_params(self):
         return vars(self)
+
+
+def latencies_psps(spikes, dt, duration, return_trains=False, **kwargs):
+    """
+    Transform a set of spike latencies into their evoked PSPs, for a given
+    duration and time step. Optionally also return associated spike trains.
+
+    Inputs
+    ------
+    spikes : array, shape (num_samples, num_enc_nrns)
+        Set of spike latencies, one spike contributed per encoding neuron.
+    return_trains: bool, optional
+        Return list of 2-tuples, containing (psps, spike_trains) per sample.
+
+    Output
+    ------
+    psps : list, len (num_samples)
+        Set of predetermined PSPs evoked by encoding neurons, each with shape
+        (num_enc_nrns, num_iter)
+    psps, spike_trains : list, len (num_samples)
+        List of 2-tuples [(psps_0, spike_trains_0), ...].
+    """
+    times = np.arange(0., duration, dt)
+    # Determine evoked PSPs, each sample has shape (num_nrns, num_iter)
+    psps = [psp(times, s.reshape((-1, 1)), **kwargs) for s in spikes]
+    if return_trains:
+        spike_trains = [None] * len(spikes)
+        for idx, latencies in enumerate(spikes):
+            spike_trains[idx] = [np.array([s]) if not np.isinf(s)
+                                 else np.array([]) for s in latencies]
+        return zip(psps, spike_trains)
+    else:
+        return psps
+
+
+def psp(t, spikes, **kwargs):
+    """
+    PSP(s) evoked at time(s) t due to an array of spikes.
+    """
+    params = ParamSet({'psp_coeff': 4.,
+                       'tau_m': 10.,
+                       'tau_s': 5.})
+    params.overwrite(**kwargs)
+    s = t - spikes
+    u = s > 0.
+    values = np.zeros(s.shape)
+    values[u] = params['psp_coeff'] * \
+        (np.exp(-s[u] / params['tau_m']) - np.exp(-s[u] / params['tau_s']))
+    return values
 
 
 def gaussian(x, mu, sigma):
