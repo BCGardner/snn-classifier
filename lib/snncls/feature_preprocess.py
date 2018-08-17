@@ -47,16 +47,17 @@ def standardize(x):
     return (x - np.mean(x, 0)) / np.std(x, 0)
 
 
-def onehot_encode(y):
+def onehot_encode(y, num_classes=None):
     """
     Transform array of class labels into sparse one-hot encoded matrix.
     """
     m = len(y)  # No. examples
     labels = np.unique(y)  # Fill in matrix in this order
-    num_labels = len(labels)
+    if num_classes is None:
+        num_classes = len(labels)
 
     # Sparse matrix
-    y_ = np.zeros((m, num_labels))
+    y_ = np.zeros((m, num_classes))
     for i in xrange(m):
         index = np.where(labels == y[i])[0][0]
         y_[i, index] = 1.0

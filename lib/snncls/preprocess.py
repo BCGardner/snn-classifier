@@ -113,6 +113,21 @@ class ReceptiveFields(object):
         return vars(self)
 
 
+def onehot_encode(y, num_classes=None):
+    """
+    Transform array of class labels into sparse one-hot encoded matrix.
+    """
+    m = len(y)  # Num examples
+    labels = np.unique(y)  # Fill in matrix in this order
+    if num_classes is None:
+        num_classes = len(labels)
+    y_ = np.zeros((m, num_classes))
+    for i in xrange(m):
+        index = np.where(labels == y[i])[0][0]
+        y_[i, index] = 1.0
+    return y_
+
+
 def latencies_psps(spikes, dt, duration, return_trains=False, **kwargs):
     """
     Transform a set of spike latencies into their evoked PSPs, for a given
