@@ -53,17 +53,19 @@ def confusion_matrix(net, data, raw=True):
     Measure confusion matrix of a network on provided data.
     Data is a list of 2-tuples [(X1, y1), (X2, y2), ...], where each X is also
     a 2-tuple containing (psps_in, spikes_in). Raw returns counts per matrix
-    element.
+    element. Final column is the null class, containing counts for no spike.
     """
     num_classes = len(data[0][1])
     # Confusion matrix: <true classes> by <predicted classes>
-    conf_mat = np.zeros((num_classes, num_classes))
+    conf_mat = np.zeros((num_classes, num_classes + 1))
     for (X, _), y in data:
         label = np.argmax(y)  # True class label
         predict = net.predict(X)  # Predicted class label
         # Given a prediction by the network
         if not np.isnan(predict):
             conf_mat[label, predict] += 1.
+        else:
+            conf_mat[label, -1] += 1.
     if raw:
         return conf_mat
     else:

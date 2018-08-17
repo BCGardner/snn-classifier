@@ -68,7 +68,7 @@ class Network(object):
         # Set weights to a given value, otherwise randomly intialise according
         # to a uniform distribution
         if weights is not None:
-            self.w = weights
+            self.w = [w.copy() for w in weights]
             # Weight bound constraints
             for w in self.w:
                 assert np.all(w >= self.w_bounds[0])
