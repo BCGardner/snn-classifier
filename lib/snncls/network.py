@@ -84,6 +84,73 @@ class Network(object):
             # Clip out-of-bound weights
             self.clip_weights()
 
+    def simulateTODO(self, psp_inputs, debug=False):
+        """
+        Network activity in response to an input pattern presented to the
+        network. Based on iterative procedure to determine spike times.
+        TODO: generalise to all layers.
+
+        Inputs
+        ------
+        psp_inputs : array, shape (num_inputs, num_iter)
+            PSPs evoked by input neurons.
+        debug : bool, optional
+            Record network dynamics for debugging.
+
+        Outputs
+        -------
+        spike_trains_l : list
+            List of neuron spike trains, for layers l > 0.
+        rec : dict, optional
+            Debug recordings containing
+            {psps evoked from hidden neurons 'psp', potentials 'u',
+             bool spike trains 'S'}.
+        """
+        # === Initialise ==================================================== #
+
+        # Pattern stats
+        num_iter = psp_inputs.shape[1]  # Num. time steps per duration
+        # Debug
+        if debug:
+            rec = {'psp': [np.empty((i, num_iter))
+                           for i in self.sizes[1:-1]],
+                   'u': [np.empty((i, num_iter))
+                         for i in self.sizes[1:]],
+                   'S': [np.empty((i, num_iter), dtype=int)
+                         for i in self.sizes[1:]]}
+        # Spike trains for layers: l > 0
+        spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
+                          for i in xrange(1, self.num_layers)]
+
+        # === Run simulation ================================================ #
+
+        def refr(idx):
+            """Refractory kernel from idx of firing time, up to num_iter."""
+            kernel = np.zeros(num_iter)
+            ts = np.arange(1, num_iter - idx) * self.dt
+            kernel[idx+1:] += self.cell_params['kappa_0'] * \
+                np.exp(-ts / self.cell_params['tau_m'])
+            return kernel
+
+        # Output layer response
+        potentials = np.dot(self.w[-1], psp_inputs)
+        for i in xrange(self.sizes[-1]):
+            num_spikes = 0
+            thr_idxs = np.argwhere(potentials[i] > self.cell_params['theta'])
+            while num_spikes < len(thr_idxs):
+                fire_idx = thr_idxs[num_spikes, 0]
+                potentials[i] += refr(fire_idx)
+                spike_trains_l[-1][i] = np.append(spike_trains_l[-1][i],
+                                                  fire_idx * self.dt)
+                num_spikes += 1
+                thr_idxs = np.argwhere(potentials[i] >
+                                       self.cell_params['theta'])
+        if debug:
+            rec['u'][-1] = potentials
+            return spike_trains_l, rec
+        else:
+            return spike_trains_l
+
     def simulate(self, psp_inputs, debug=False):
         """
         Network activity in response to an input pattern presented to the
@@ -102,7 +169,8 @@ class Network(object):
             List of boolean spike trains in layers l > 0.
         rec : dict, optional
             Debug recordings containing
-            {hidden layer psps 'psp', potential 'u', bool spike trains 'S'}.
+            {psps evoked from hidden neurons 'psp', potentials 'u',
+             bool spike trains 'S'}.
         """
         # === Initialise ==================================================== #
 
