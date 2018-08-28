@@ -15,6 +15,48 @@ import numpy as np
 from snncls.parameters import ParamSet
 
 
+def transform_data(X, y, param, receptor=None, num_classes=None):
+    """
+    Transform a data set into predetermined PSPs, spike latencies, one-hot
+    encoded class labels.
+
+    Inputs
+    ------
+    X : array, shape (num_samples, features)
+        Unprocessed input data.
+    y : array, shape (num_samples,)
+        Unprocessed labels.
+    param : object
+        Top level parameter container, using pattern and cell.
+    receptor : object, optional
+        Model for transforming real-valued features into spike latencies.
+    encoder : object, optional
+        Transforms categorical y values into one-hot encodings.
+    num_classes : int, optional
+        Set one-hot encoded labels to this number of classes.
+
+    Output
+    ------
+    data : list
+        Processed data as list of 2-tuples, [(X1, y1), (X2, y2), ...].
+        Each X is itself a 2-tuple, containing (psps, spike_trains). y's are
+        one-hot encoded.
+    """
+    if receptor is None:
+        # Prepare feature preprocessor fitted to this specific data
+        receptor = ReceptiveFields(param.pattern['neurons_f'],
+                                   param.pattern['beta'])
+        receptor.fit(X)
+    # Transform data
+    latencies = receptor.transform(X)
+    y_enc = onehot_encode(y, num_classes=num_classes)
+    # Predetermine PSPs, return as list of 2-tuples containing (psps, spikes)
+    inputs_tr = latencies_psps(latencies, param.dt,
+                               param.pattern['duration'],
+                               return_trains=True, **param.cell)
+    return zip(inputs_tr, y_enc)
+
+
 class ReceptiveFields(object):
     """
     Converts real-valued feature vectors into spike latencies based on
@@ -115,7 +157,19 @@ class ReceptiveFields(object):
 
 def onehot_encode(y, num_classes=None):
     """
-    Transform array of class labels into sparse one-hot encoded matrix.
+    Transform array of class labels into one-hot encoded matrix.
+
+    Inputs
+    ------
+    y : array, shape (num_samples,)
+        Class labels.
+    num_classes : int, optional
+        Number of unique classes.
+
+    Output
+    ------
+    return : array, shape (num_samples, num_classes)
+        One-hot encoded class labels.
     """
     m = len(y)  # Num examples
     labels = np.unique(y)  # Fill in matrix in this order

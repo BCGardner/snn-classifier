@@ -12,14 +12,14 @@ from __future__ import division
 
 import numpy as np
 
-from snncls import network, learning_window
+from snncls import network, learnwindow
 
 
 class NetworkTraining(network.Network):
     """
     Abstract network training class.
     """
-    def __init__(self, sizes, param, LearnWindow=learning_window.PSPWindow,
+    def __init__(self, sizes, param, LearnWindow=learnwindow.PSPWindow,
                  **kwargs):
         """
         Set network learning parameters and learning window.
@@ -41,58 +41,8 @@ class NetworkTraining(network.Network):
         self.eta = param.net['eta0'] / self.sizes[0]
         self.corr = LearnWindow(param)
 
-    def cross_validation(self, tr_data_f, epochs, va_losses=False,
-                         report=True):
-        """
-        Stochastic gradient descent - trained using cross-validation on
-        K-1 folds. Network evaluated on average of left out folds. Full batch
-        learning.
-
-        Inputs
-        ------
-        tr_data_f : list
-            Training data, k folds.
-
-        Outputs
-        -------
-        tr_losses : array
-            Training loss of size: <num_folds> by <num_epochs>.
-        va_errs : array
-            Validation error after training of size: <num_folds>.
-        va_loss : array, optional
-            Validation loss of size: <num_folds> by <num_epochs>.
-        """
-        num_folds = len(tr_data_f)
-        rec = {'tr_losses': np.full((num_folds, epochs), np.nan),
-               'va_errs': np.full(num_folds, np.nan)}
-        if va_losses:
-            rec['va_losses'] = np.full((num_folds, epochs), np.nan)
-        # Training-validation
-        for k in xrange(num_folds):
-            # Partition data into training and validation sets
-            tr_data = []
-            for l in xrange(num_folds):
-                if l != k:
-                    tr_data += tr_data_f[l]
-            va_data = tr_data_f[k]
-            # Train model on tr_data
-            self.reset()
-            if va_losses:
-                rec_f = self.SGD(tr_data, epochs, len(tr_data),
-                                 te_data=va_data, report=report)
-                rec['va_losses'][k] = rec_f['te_loss']
-            else:
-                rec_f = self.SGD(tr_data, epochs, len(tr_data),
-                                 report=report)
-            rec['tr_losses'][k] = rec_f['tr_loss']
-            # Validation error
-            rec['va_errs'][k] = self.evaluate(va_data)
-            if report:
-                print "Folds: {0}".format(k + 1)
-        return rec
-
     def SGD(self, tr_data, epochs, mini_batch_size, te_data=None,
-            report=True, debug=False):
+            report=True, debug=False, early_stopping=False, tol=1e-5):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -100,11 +50,12 @@ class NetworkTraining(network.Network):
         Inputs
         ------
         tr_data : list
-            Training data: list of 2-tuples (X, Y), where X is an array of
-            predetermined PSPs at input layer and Y a one-hot target output
-            vector.
+            Training data: list of 2-tuples (X, Y), where X is input data,
+            and Y a one-hot encoded class label. X is a 2-tuple, containing
+            predetermined PSP's evoked by input layer, and the list of
+            associated input spike times of size <num_inputs>.
         epochs : int
-            Num. training epochs.
+            Num. training epochs (maximum with early_stopping).
         mini_batch_size : int
             Patterns per mini batch (must be factor of epochs).
         te_data : list, optional
@@ -113,6 +64,13 @@ class NetworkTraining(network.Network):
             Print num. epochs.
         debug : bool
             Additional readings: weights.
+        early_stopping : bool, requires te_data
+            Early stopping, if te_data used.
+        tol : float, requires early_stopping and te_data
+            Tolerance for optimisation. If loss on te_data is not improving by
+            at least tol (relative amount, proportional to initial te_loss)
+            for two consecutive epochs, then convergence is considered and
+            learning stops.
 
         Outputs
         -------
@@ -132,6 +90,10 @@ class NetworkTraining(network.Network):
             rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in self.w]
         if te_data is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
+            # Initial test loss for early stopping
+            if early_stopping:
+                te_loss0 = self.loss(te_data)
+#                print "Test loss\t\t{0:.3f}".format(te_loss0)
         # Training
         for j in xrange(epochs):
             # Partition data into mini batches
@@ -140,16 +102,25 @@ class NetworkTraining(network.Network):
                             for k in xrange(0, tr_cases, mini_batch_size)]
             for mini_batch in mini_batches:
                 self.update_mini_batch(mini_batch)
+            # Debugging recordings
+            if debug:
+                for l in xrange(self.num_layers-1):
+                    rec['w'][l][j] = self.w[l]
             # Determine loss on training / test data
             rec['tr_loss'][j] = self.loss(tr_data)
             if te_data is not None:
                 rec['te_loss'][j] = self.loss(te_data)
+                # Early stopping
+                if early_stopping and j > 1:
+                    te_losses = rec['te_loss'][j-2:j+1]
+                    delta_losses = np.diff(te_losses) / te_loss0
+                    cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
+                    if not cond.any():
+                        print "Stop Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
+                        break
             # Report training / test error rates per epoch
-            if report and not (j + 1) % 1:
-                print "Epoch {0}\t\t{1:.3f}".format(j + 1, rec['tr_loss'][j])
-            if debug:
-                for l in xrange(self.num_layers-1):
-                    rec['w'][l][j] = self.w[l]
+            if report and not j % 5:
+                print "Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
 #                print "Epoch {0}:\ttrain:\t{1:.3f}".format(
 #                        j + 1, self.evaluate(tr_data))
 #                if te_data is not None:
@@ -159,13 +130,14 @@ class NetworkTraining(network.Network):
 
     def update_mini_batch(self, mini_batch):
         """
-        Update model parameters based on a mini batch of training data.
+        Update network weights based on a mini batch of training data.
 
         Inputs
         ------
         mini_batch : list
-            Training data: list of 2-tuples (X, y). X is of size:
-                <n_inputs> by <n_iterations>, Y is <n_classes>.
+            Training data - list of 2-tuples (X, y). Each X is a 2-tuple
+            containing predetermined PSPs and their associated input spike
+            times. Each y is a one-hot encoded class label.
         """
         # Gradients of cost function w.r.t. weights
         grad_w_acc = [np.zeros(w.shape) for w in self.w]
@@ -176,24 +148,23 @@ class NetworkTraining(network.Network):
             grad_w = self.backprop(X, y)
             grad_w_acc = [dw + dw_x for dw, dw_x in zip(grad_w_acc, grad_w)]
 
-        # Apply accumulated weight changes (incl. scaling)
+        # Apply accumulated weight changes
         self.w = [w - self.eta / num_cases * dw
                   for w, dw in zip(self.w, grad_w_acc)]
-        # self.w = [w - self.eta / num_cases * (dw + self.l2_pen * w)
-        #           for w, dw in zip(self.w, grad_w_acc)]
+        self.clip_weights()
 
     def backprop(self, tr_input, tr_target):
         raise NotImplementedError
 
     def evaluate(self, data):
         """
-        Evaluate performace of model on data [(x1, y1), ...] as percentage of
+        Evaluate performace of model on data [(X1, y1), ...] as percentage of
         errors.
         """
         correct = 0.0
         num_cases = len(data)
         for d_case in data:
-            x, y = d_case
+            (x, _), y = d_case
             p = self.predict(x)
             if p == np.argmax(y):
                 correct += 1.0
