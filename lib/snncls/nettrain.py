@@ -42,7 +42,8 @@ class NetworkTraining(network.Network):
         self.corr = LearnWindow(param)
 
     def SGD(self, tr_data, epochs, mini_batch_size, te_data=None,
-            report=True, debug=False, early_stopping=False, tol=1e-5):
+            report=True, debug=False, early_stopping=False, tol=1e-5,
+            rmsprop=False, epsilon=1e-8):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -71,6 +72,10 @@ class NetworkTraining(network.Network):
             at least tol (relative amount, proportional to initial te_loss)
             for two consecutive epochs, then convergence is considered and
             learning stops.
+        rmsprop : bool
+            Enable adaptive learning rates.
+        epsilon : float
+            RMSprop numerical stability.
 
         Outputs
         -------
@@ -80,6 +85,8 @@ class NetworkTraining(network.Network):
             Loss on test data.
         w : list, optional
             Weight arrays in each layer, per epoch.
+        gas : list, optional
+            Moving average of squared gradients (gas).
         """
         tr_data = list(tr_data)  # Copy list of data samples
         tr_cases = len(tr_data)
@@ -88,12 +95,17 @@ class NetworkTraining(network.Network):
         rec = {'tr_loss': np.full(epochs, np.nan)}
         if debug:
             rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in self.w]
+            if rmsprop:
+                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
+                              for w in self.w]
         if te_data is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
             # Initial test loss for early stopping
             if early_stopping:
                 te_loss0 = self.loss(te_data)
 #                print "Test loss\t\t{0:.3f}".format(te_loss0)
+        # [RMSProp]
+        grad_w_av_sq = [np.zeros(w.shape) for w in self.w]
         # Training
         for j in xrange(epochs):
             # Partition data into mini batches
@@ -101,11 +113,16 @@ class NetworkTraining(network.Network):
             mini_batches = [tr_data[k:k+mini_batch_size]
                             for k in xrange(0, tr_cases, mini_batch_size)]
             for mini_batch in mini_batches:
-                self.update_mini_batch(mini_batch)
+                self.update_mini_batch(mini_batch, rmsprop=rmsprop,
+                                       grad_w_av_sq=grad_w_av_sq,
+                                       epsilon=epsilon)
             # Debugging recordings
             if debug:
                 for l in xrange(self.num_layers-1):
-                    rec['w'][l][j] = self.w[l]
+                    rec['w'][l][j] = self.w[l].copy()
+                if rmsprop:
+                    for l in xrange(self.num_layers-1):
+                        rec['gas'][l][j] = grad_w_av_sq[l].copy()
             # Determine loss on training / test data
             rec['tr_loss'][j] = self.loss(tr_data)
             if te_data is not None:
@@ -128,7 +145,8 @@ class NetworkTraining(network.Network):
 #                        self.evaluate(te_data), te_cases)
         return rec
 
-    def update_mini_batch(self, mini_batch):
+    def update_mini_batch(self, mini_batch, rmsprop=False, grad_w_av_sq=None,
+                          decay=0.9, epsilon=1e-8):
         """
         Update network weights based on a mini batch of training data.
 
@@ -138,19 +156,33 @@ class NetworkTraining(network.Network):
             Training data - list of 2-tuples (X, y). Each X is a 2-tuple
             containing predetermined PSPs and their associated input spike
             times. Each y is a one-hot encoded class label.
+        rmsprop : bool
+            Use RMSprop to adapt each weight.
+        grad_w_av_sq : list
+            List of squared value of mean cost gradients. Requires rmsprop.
+        decay : float
+            Decay rate parameter for rmsprop.
+        epsilon : int
+            Numerical stability parameter for rmsprop.
         """
-        # Gradients of cost function w.r.t. weights
+        # Accumulated gradients of cost function w.r.t. weights
         grad_w_acc = [np.zeros(w.shape) for w in self.w]
         num_cases = len(mini_batch)
-
         # Accumulate weight gradients from each training case in mini_batch
         for X, y in mini_batch:
             grad_w = self.backprop(X, y)
-            grad_w_acc = [dw + dw_x for dw, dw_x in zip(grad_w_acc, grad_w)]
-
+            grad_w_acc = [dC + dC_x for dC, dC_x in
+                          zip(grad_w_acc, grad_w)]
         # Apply accumulated weight changes
-        self.w = [w - self.eta / num_cases * dw
-                  for w, dw in zip(self.w, grad_w_acc)]
+        if rmsprop:
+            for l in xrange(self.num_layers - 1):
+                grad_w_av_sq[l] = decay * grad_w_av_sq[l] + \
+                    (1. - decay) * grad_w_acc[l]**2
+                self.w[l] -= 0.1 / np.sqrt(grad_w_av_sq[l] + epsilon) * \
+                    grad_w_acc[l]
+        else:
+            self.w = [w - self.eta / num_cases * dC
+                      for w, dC in zip(self.w, grad_w_acc)]
         self.clip_weights()
 
     def backprop(self, tr_input, tr_target):
