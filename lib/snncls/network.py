@@ -84,7 +84,7 @@ class Network(object):
             # Clip out-of-bound weights
             self.clip_weights()
 
-    def simulate(self, psp_inputs, debug=False):
+    def simulate(self, psp_inputs, latency=False, debug=False):
         """
         Network activity in response to an input pattern presented to the
         network. Based on iterative procedure to determine spike times.
@@ -97,6 +97,8 @@ class Network(object):
         ------
         psp_inputs : array, shape (num_inputs, num_iter)
             PSPs evoked by input neurons.
+        latency : bool, optional
+            Restrict to just finding first output spikes.
         debug : bool, optional
             Record network dynamics for debugging.
 
@@ -183,7 +185,11 @@ class Network(object):
                     psps[i, fire_idx:] += lut_psp[:iters]
                     spike_trains_l[-1][i] = np.append(spike_trains_l[-1][i],
                                                       fire_idx * self.dt)
-                    num_spikes += 1
+                    # Optimisation: skip output spikes after first
+                    if latency:
+                        break
+                    else:
+                        num_spikes += 1
                 else:
                     break
         if debug:
