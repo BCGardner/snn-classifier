@@ -100,20 +100,22 @@ class NetworkTraining(network.Network):
         svr_prms = ParamSet({})
         if solver == 'rmsprop':
             # grad_w_av_sq : EMA of squared gradients
-            # decay : decay rate; epsilon : numerical stability
-            svr_prms.update({'grad_w_av_sq': [np.zeros(w.shape) for
+            # decay : decay rate; alpha : lrate; epsilon : numerical stability
+            svr_prms.update({'grad_w_av_sq': [np.full(w.shape, 50.) for
                                               w in self.w],
                              'decay': 0.9,
+                             'alpha': 0.1,
                              'epsilon': 1e-8})
         elif solver == 'adam':
             # m : 1st moments (mean / EMA of gradients)
             # v : 2nd moments (uncentered variance / EMA of squared gradients)
-            # betas : decay terms; epsilon : numerical stability
+            # betas : decay terms; alpha : lrate; epsilon : numerical stability
             svr_prms.update({'m': [np.zeros(w.shape) for
                                    w in self.w],
                              'v': [np.zeros(w.shape) for
                                    w in self.w],
                              'betas': (0.9, 0.999),
+                             'alpha': 0.1,
                              'epsilon': 1e-8})
         svr_prms.overwrite(**kwargs)
         # Recordings
@@ -203,16 +205,23 @@ class NetworkTraining(network.Network):
             self.w = [w - self.eta / num_cases * dC
                       for w, dC in zip(self.w, grad_w_acc)]
         elif solver == 'rmsprop':
-            for l in xrange(self.num_layers - 1):
-                prms.grad_w_av_sq[l] = prms.decay * \
-                    prms.grad_w_av_sq[l] + (1. - prms.decay) * grad_w_acc[l]**2
-                self.w[l] -= \
-                    self.eta / (num_cases * np.sqrt(prms.grad_w_av_sq[l] +
-                                                    prms.epsilon)) * \
-                    grad_w_acc[l]
+            for idx, dC in enumerate(grad_w_acc):
+                prms.grad_w_av_sq[idx] = prms.decay * \
+                    prms.grad_w_av_sq[idx] + (1. - prms.decay) * dC**2
+                self.w[idx] -= \
+                    prms.alpha / np.sqrt(prms.grad_w_av_sq[idx] +
+                                         prms.epsilon) * dC
         elif solver == 'adam':
-            # TODO
-            pass
+            iters += 1  # Update for next iteration
+            for idx, dC in enumerate(grad_w_acc):
+                prms.m[idx] = prms.betas[0] * prms.m[idx] + \
+                    (1. - prms.betas[0]) * dC
+                prms.v[idx] = prms.betas[1] * prms.v[idx] + \
+                    (1. - prms.betas[1]) * dC**2
+                m_unbias = prms.m[idx] / (1. - prms.betas[0]**iters)
+                v_unbias = prms.v[idx] / (1. - prms.betas[1]**iters)
+                self.w[idx] -= (prms.alpha * m_unbias) / \
+                    (np.sqrt(v_unbias) + prms.epsilon)
         self.clip_weights()
 
     def backprop(self, tr_input, tr_target):

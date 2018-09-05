@@ -71,3 +71,17 @@ def confusion_matrix(net, data, raw=True):
     else:
         # Percentage of occurances per row
         return conf_mat * 100. / np.sum(conf_mat, 1, keepdims=True)
+
+
+def rates_av(net, data):
+    """
+    Find average firing rates of neurons in each layer.
+    """
+    num_samples = len(data)
+    rates = np.zeros((net.num_layers - 1))
+    for sample in data:
+        spike_trains_l = net.simulate(sample[0][0])
+        for idx, spike_trains in enumerate(spike_trains_l):
+            for spikes in spike_trains:
+                rates[idx] += len(spikes)
+    return rates / (num_samples * np.array(net.sizes[1:]))
