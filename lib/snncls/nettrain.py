@@ -76,8 +76,6 @@ class NetworkTraining(network.Network):
             learning stops.
         solver : str
             Choices: 'sgd' (default), 'rmsprop', 'adam'.
-        epsilon : float
-            RMSprop numerical stability.
 
         Outputs
         -------
@@ -101,11 +99,12 @@ class NetworkTraining(network.Network):
         if solver == 'rmsprop':
             # grad_w_av_sq : EMA of squared gradients
             # decay : decay rate; alpha : lrate; epsilon : numerical stability
-            svr_prms.update({'grad_w_av_sq': [np.full(w.shape, 50.) for
+            svr_prms.update({'grad_w_av_sq': [np.zeros(w.shape) for
                                               w in self.w],
                              'decay': 0.9,
                              'alpha': 0.1,
-                             'epsilon': 1e-8})
+                             'epsilon': 1e-8,
+                             'warmstart': False})
         elif solver == 'adam':
             # m : 1st moments (mean / EMA of gradients)
             # v : 2nd moments (uncentered variance / EMA of squared gradients)
@@ -134,6 +133,14 @@ class NetworkTraining(network.Network):
 
         # === Training ====================================================== #
 
+        # Warm start for rmsprop
+        if solver == 'rmsprop' and svr_prms['warmstart']:
+            # Ensure stratified samples
+            self.rng.shuffle(tr_data)
+            mini_batch = tr_data[:mini_batch_size]
+            # Estimate initial squared gradients
+            grad_w_acc = self.grad_accum(mini_batch)
+            svr_prms['grad_w_av_sq'] = [dC**2 for dC in grad_w_acc]
         for j in xrange(epochs):
             # Partition data into mini batches
             self.rng.shuffle(tr_data)
@@ -193,16 +200,10 @@ class NetworkTraining(network.Network):
         # Collect solver parameters
         prms = Namespace(**svr_prms)
         # Accumulated gradients of cost function w.r.t. weights
-        grad_w_acc = [np.zeros(w.shape) for w in self.w]
-        num_cases = len(mini_batch)
-        # Accumulate weight gradients from each training case in mini_batch
-        for X, y in mini_batch:
-            grad_w = self.backprop(X, y)
-            grad_w_acc = [dC + dC_x for dC, dC_x in
-                          zip(grad_w_acc, grad_w)]
+        grad_w_acc = self.grad_accum(mini_batch)
         # Apply accumulated weight changes
         if solver == 'sgd':
-            self.w = [w - self.eta / num_cases * dC
+            self.w = [w - self.eta / len(mini_batch) * dC
                       for w, dC in zip(self.w, grad_w_acc)]
         elif solver == 'rmsprop':
             for idx, dC in enumerate(grad_w_acc):
@@ -223,6 +224,18 @@ class NetworkTraining(network.Network):
                 self.w[idx] -= (prms.alpha * m_unbias) / \
                     (np.sqrt(v_unbias) + prms.epsilon)
         self.clip_weights()
+
+    def grad_accum(self, mini_batch):
+        """
+        Apply backprop to each sample in a mini_batch of data and return list
+        of accumulated weight gradients for each layer.
+        """
+        grad_w_acc = [np.zeros(w.shape) for w in self.w]
+        for X, y in mini_batch:
+            grad_w = self.backprop(X, y)
+            grad_w_acc = [dC + dC_x for dC, dC_x in
+                          zip(grad_w_acc, grad_w)]
+        return grad_w_acc
 
     def backprop(self, tr_input, tr_target):
         raise NotImplementedError
