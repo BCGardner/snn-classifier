@@ -4,12 +4,22 @@
 Created on Jan 2018
 
 @author: BG
+
+Tex textwidth (multilayer-classifier): ~ 5.75 in
+Default fig scale: fig_height = fig_width / 1.5
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import ticker
+
+# Default pattern duration
+dt = 0.1
+duration = 40.
+times = np.arange(0., duration, dt)
+# Text
+props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
 
 def spike_raster(st, figsize=None):
@@ -134,27 +144,61 @@ def spike_rasters(spikes_net, voltages=None, figsize=(8.0, 6.0), fname=None):
         plt.show()
 
 
-def errbar(losses, figsize=(8.0, 6.0), fname=None):
+def errbars(*losses, **kwargs):
+    """
+    Plot set of loss curves, sharing same length. Each set of loss curves has
+    shape (num_epochs, num_runs).
+    """
+    args = {'y_max': 0.2,
+            'dx': None,
+            'dy': None,
+            'figsize': (4, 8/3.),
+            'labels': None,
+            'text': None,
+            'fname': None}
+    for k, v in kwargs.items():
+        if k in args:
+            args[k] = v
     # Plot error as a function of epochs
-    f, ax = plt.subplots(figsize=figsize)
+    f, ax = plt.subplots(figsize=args['figsize'])
     # Epochs, mean, std
-    epochs = np.arange(len(losses))
-    loss_av = np.mean(losses, 1)
-    loss_std = np.std(losses, 1)
-    # Evolution of loss
-    ax.plot(epochs, loss_av, 'k-')
-    ax.fill_between(epochs, loss_av - loss_std, loss_av + loss_std, alpha=0.2)
-    # Labels
-    dx = 200
-    plt.xticks(np.arange(0, 1000 + dx, dx))
-    plt.xlim([0, 1000])
-    plt.xlabel('Epochs')
-    plt.ylabel('Cross-entropy loss')
-    plt.grid()
-    if fname is not None:
-        plt.savefig('out/{}.pdf'.format(fname), dpi=300)
+    num_epochs = len(losses[0])
+    epochs = np.arange(num_epochs) + 1
+
+    def plot_errbar(loss, label=None):
+        loss_av = np.mean(loss, 1)
+        loss_std = np.std(loss, 1)
+        # Evolution of loss
+        ax.plot(epochs, loss_av, '-', label=label)
+        ax.fill_between(epochs, loss_av - loss_std, loss_av + loss_std,
+                        alpha=0.2)
+    # Plot
+    if args['labels'] is not None:
+        for loss, label in zip(losses, args['labels']):
+            plot_errbar(loss, label)
+        ax.legend()
     else:
-        plt.show()
+        for loss in losses:
+            plot_errbar(loss)
+    # Labels
+    plt.xlim([0, num_epochs])
+    plt.ylim([0, args['dy']])
+    if args['dx'] is not None:
+        dx = args['dx']
+    else:
+        dx = 0.2 * num_epochs
+    plt.xticks(np.arange(0, num_epochs + dx, dx))
+    if args['dy'] is not None:
+        plt.yticks(np.arange(0, args['y_max'] + args['dy'], args['dy']))
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.grid()
+    if args['text'] is not None:
+        ax.text(0.95, 0.9, args['text'], transform=ax.transAxes,
+                fontsize=11, verticalalignment='top',
+                horizontalalignment='right', bbox=props)
+    # Save
+    print_plot(f, args['fname'])
 
 
 def heatmap(data, figsize=None, fname=None, vmin=None, vmax=None,
@@ -188,3 +232,10 @@ def heatmap(data, figsize=None, fname=None, vmin=None, vmax=None,
         plt.savefig('out/{}.pdf'.format(fname), dpi=300)
     else:
         plt.show()
+
+
+def print_plot(fig, fname=None):
+    if fname is not None:
+        fig.savefig('out/{}.pdf'.format(fname), bbox_inches='tight', dpi=300)
+    else:
+        fig.show()
