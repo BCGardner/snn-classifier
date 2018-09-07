@@ -170,8 +170,10 @@ def errbars(*losses, **kwargs):
         loss_std = np.std(loss, 1)
         # Evolution of loss
         ax.plot(epochs, loss_av, '-', label=label)
+        line_h = ax.get_lines()[-1]
+        color = line_h.get_color()
         ax.fill_between(epochs, loss_av - loss_std, loss_av + loss_std,
-                        alpha=0.2)
+                        alpha=0.2, color=color)
     # Plot
     if args['labels'] is not None:
         for loss, label in zip(losses, args['labels']):
@@ -182,7 +184,7 @@ def errbars(*losses, **kwargs):
             plot_errbar(loss)
     # Labels
     plt.xlim([0, num_epochs])
-    plt.ylim([0, args['dy']])
+    plt.ylim([0, args['y_max']])
     if args['dx'] is not None:
         dx = args['dx']
     else:
