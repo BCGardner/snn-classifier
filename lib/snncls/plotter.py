@@ -9,6 +9,7 @@ Tex textwidth (multilayer-classifier): ~ 5.75 in
 Default fig scale: fig_height = fig_width / 1.5
 """
 
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -20,6 +21,40 @@ duration = 40.
 times = np.arange(0., duration, dt)
 # Text
 props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+# Default fig_width
+fig_width = 5.5
+
+
+def confusion_matrix(mat, fig_width=fig_width, fname=None):
+    """
+    Plot square confusion matrix of size <true classes> by <predicted classes>,
+    assuming accuracies as percentages normalised by each row.
+    """
+    figsize = (fig_width, fig_width / 1.5)
+    f, ax = plt.subplots(figsize=figsize)
+    num_classes = len(mat)
+    # Plot
+    im = ax.imshow(mat, cmap='Blues', interpolation='none', vmin=0, vmax=100)
+    f.colorbar(im, ticks=np.arange(0, 120, 20))
+    # Add values
+    thresh = mat.max() / 2.
+    for i, j in itertools.product(range(mat.shape[0]), range(mat.shape[1])):
+        ax.text(j, i, format(mat[i, j], '.1f'),
+                horizontalalignment="center",
+                color="white" if mat[i, j] > thresh else "black")
+    # Labels
+    ax.set_xticks(np.arange(0, num_classes + 1, 1))
+    xticks = [clabel for clabel in range(num_classes)] + [r'$\emptyset$']
+    ax.set_xticklabels(xticks)
+    ax.set_xlim(np.array([0, num_classes + 1]) - 0.5)  # Final col is null
+    ax.set_yticks(np.arange(0, num_classes + 1, 1))
+    ax.set_ylim(np.array([num_classes, 0]) - 0.5)
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    # Reverse x ticks
+    ax.xaxis.tick_top()
+    # Save
+    print_plot(f, fname)
 
 
 def spike_raster(st, figsize=None):
@@ -152,6 +187,7 @@ def errbars(*losses, **kwargs):
     args = {'y_max': 0.2,
             'dx': None,
             'dy': None,
+            'fig_width': fig_width,
             'figsize': (4, 8/3.),
             'labels': None,
             'text': None,
@@ -160,7 +196,8 @@ def errbars(*losses, **kwargs):
         if k in args:
             args[k] = v
     # Plot error as a function of epochs
-    f, ax = plt.subplots(figsize=args['figsize'])
+    figsize = (fig_width, fig_width / 1.5)
+    f, ax = plt.subplots(figsize=figsize)
     # Epochs, mean, std
     num_epochs = len(losses[0])
     epochs = np.arange(num_epochs) + 1

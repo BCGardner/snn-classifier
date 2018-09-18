@@ -29,7 +29,7 @@ Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup 
 - Using NMF decomposition (5 components / reduced features) gives a training accuracy of 92.4 % after 744 iterations.
 - NMF decomposition and then normalisation gives an accuracy of 94.0 % after 1125 iterations.
 
-## wisc_original
+## wisc
 
 - Contains 683 samples, 9 features per sample.
 - 16 samples were removed due to missing values (original size was 699 samples).

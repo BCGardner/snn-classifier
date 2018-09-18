@@ -39,11 +39,10 @@ class SimParam(object):
         self.net = ParamSet({'w_h_init': (0.0, 2.0),  # Initial hidden weights
                              'w_o_init': (0.0, 4.0),  # Initial output weights
                              'w_bounds': (-np.inf, np.inf),  # Weight bounds
-                             'eta0': 300.,          # Learning rate
                              'l2_pen': 1E-3,        # L2 weight penalty term
                              'syn_scale': 0.1})     # Synaptic scaling
         # Patterns
-        self.pattern = ParamSet({'neurons_f': 6,    # num. encoding nrns
+        self.pattern = ParamSet({'neurons_f': 12,   # num. encoding nrns
                                  'beta': 1.5,       # width receptive fields
                                  'duration': 40.})  # sim. runtime per pattern
 
@@ -63,13 +62,13 @@ class LatencyParam(SimParam):
     """
     Parameters for NetworkSoftmax.
     """
-    def __init__(self, dt=0.1, seed=None, tau_max=1000.0, cpd_scale=4.0,
-                 **kwargs):
+    def __init__(self, dt=0.1, seed=None, **kwargs):
         # Common defaults
         super(LatencyParam, self).__init__(dt, seed)
-        # Latency specific
-        self.tau_max = tau_max   # Default value of first spike (tau_max >> T)
-        self.cpd_scale = cpd_scale  # Scaling factor for cpd
+        # Latency specific defaults
+        self.net.update({'eta0': 300.,
+                         'tau_max': 1000.,
+                         'cpd_scale': 4.})
         # Update defaults
         self.update(**kwargs)
 
@@ -83,6 +82,7 @@ class TemporalParam(SimParam):
         # Common defaults
         super(TemporalParam, self).__init__(dt, seed)
         # Temporal specific
+        self.net['eta0'] = 20.
         self.spikes_ref = spikes_ref
         # Update defaults
         self.update(**kwargs)
