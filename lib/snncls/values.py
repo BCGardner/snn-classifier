@@ -63,7 +63,7 @@ class LatencyParam(SimParam):
     """
     Parameters for NetworkSoftmax.
     """
-    def __init__(self, dt=0.1, seed=None, tau_max=1000.0, cpd_scale=2.0,
+    def __init__(self, dt=0.1, seed=None, tau_max=1000.0, cpd_scale=4.0,
                  **kwargs):
         # Common defaults
         super(LatencyParam, self).__init__(dt, seed)
