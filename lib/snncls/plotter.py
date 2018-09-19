@@ -74,6 +74,62 @@ def spike_raster(st, figsize=None):
     plt.savefig('out/spike_raster')
 
 
+def spike_rasters(spikes_net, voltages=None,
+                  figsize=(fig_width, 0.75 * fig_width), fname=None):
+    """
+    Plots input, hidden, output spike trains, optionally output voltages.
+    """
+#    if voltages is not None:
+#        f, axarr = plt.subplots(4, figsize=figsize, sharex=True)
+#    else:
+#        f, axarr = plt.subplots(3, figsize=figsize, sharex=True)
+    f, axarr = plt.subplots(3, figsize=figsize, sharex=True)
+
+    def st_panel(spike_trains, ax, vline_size=0.5, ymax=None):
+        for nrn, spikes in enumerate(spike_trains):
+            ax.vlines(spikes, nrn, nrn + vline_size)
+        if ymax is not None:
+            ax.set_ylim([0, ymax])
+
+    # Input spike trains
+    st_panel(spikes_net[0], axarr[0], vline_size=2.)
+    axarr[0].set_yticks([0, 24, 48])
+    axarr[0].set_ylabel("Inputs")
+    # Hidden spike trains
+    st_panel(spikes_net[1], axarr[1], vline_size=1.)
+    axarr[1].set_yticks([0, 10, 20])
+    axarr[1].set_ylabel("Hidden")
+    # Output [voltage traces,] spike trains
+    if voltages is not None:
+        for nrn, v in enumerate(voltages):
+            axarr[2].plot(times, v / 15. + nrn, label=str(nrn), linewidth=1)
+#        axarr[2].set_ylim([-15., 30])
+#        axarr[2].set_yticks([0])
+#        axarr[2].set_ylabel("Voltage")
+        axarr[2].legend(loc="lower right", fontsize='x-small')
+    st_panel(spikes_net[2], axarr[2], vline_size=0.5, ymax=3)
+    axarr[2].set_yticks([0, 3])
+    axarr[2].set_ylabel("Outputs")
+    # [Output voltage traces]
+#    if voltages is not None:
+#        for nrn, v in enumerate(voltages):
+#            axarr[3].plot(times, v, label=str(nrn), linewidth=1)
+#        axarr[3].set_ylim([-15., 30])
+#        axarr[3].set_yticks([0])
+#        axarr[3].set_ylabel("Voltage")
+#        axarr[3].legend(loc="lower right", fontsize='x-small')
+    # Axis labels
+    plt.xlim([0., 40.])
+    plt.xlabel('Time (ms)')
+    plt.xticks(np.arange(0, 50, 10))
+    # Spacing
+    f.subplots_adjust(hspace=0.2)
+    if fname is not None:
+        plt.savefig('out/{}.pdf'.format(fname), dpi=300)
+    else:
+        plt.show()
+
+
 def weight_heatmaps(weights, figsize=(8.0, 6.0), fname=None):
     """
     Plot heatmaps of weight matrices, [save to fname].
@@ -127,52 +183,6 @@ def weight_heatmaps(weights, figsize=(8.0, 6.0), fname=None):
     fig.set_tight_layout(True)
 
     # Print data
-    if fname is not None:
-        plt.savefig('out/{}.pdf'.format(fname), dpi=300)
-    else:
-        plt.show()
-
-
-def spike_rasters(spikes_net, voltages=None, figsize=(8.0, 6.0), fname=None):
-    # Plot input, hidden, spike rasters
-    if voltages is not None:
-        f, axarr = plt.subplots(4, figsize=figsize, sharex=True)
-    else:
-        f, axarr = plt.subplots(3, figsize=figsize, sharex=True)
-
-    def st_panel(spike_trains, ax, vline_size=0.5, ymax=None):
-        for nrn, spikes in enumerate(spike_trains):
-            ax.vlines(spikes, nrn, nrn + vline_size)
-        if ymax is not None:
-            ax.set_ylim([0, ymax])
-
-    # Input spike trains
-    st_panel(spikes_net[0], axarr[0], vline_size=2., ymax=48)
-    axarr[0].set_yticks([0, 24, 48])
-    axarr[0].set_ylabel("Inputs")
-    # Hidden spike trains
-    st_panel(spikes_net[1], axarr[1], vline_size=1., ymax=20)
-    axarr[1].set_yticks([0, 10, 20])
-    axarr[1].set_ylabel("Hidden")
-    # Output spike trains
-    st_panel(spikes_net[2], axarr[2], vline_size=0.5, ymax=3)
-    axarr[2].set_yticks([0, 3])
-    axarr[2].set_ylabel("Outputs")
-    # [Output voltage traces]
-    if voltages is not None:
-        times = np.arange(0., 40., 0.1)
-        for nrn, v in enumerate(voltages):
-            axarr[3].plot(times, v, label=str(nrn), linewidth=1)
-        axarr[3].set_ylim([-30, 15])
-        axarr[3].set_yticks([0])
-        axarr[3].set_ylabel("Voltage")
-        axarr[3].legend(loc="lower right", fontsize='x-small')
-    # Axis labels
-    plt.xlim([0., 40.])
-    plt.xlabel('Time (ms)')
-    plt.xticks(np.arange(0, 50, 10))
-    # Spacing
-    f.subplots_adjust(hspace=0.2)
     if fname is not None:
         plt.savefig('out/{}.pdf'.format(fname), dpi=300)
     else:

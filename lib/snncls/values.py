@@ -38,8 +38,8 @@ class SimParam(object):
         # Network (based on iris dataset with latency decoding)
         self.net = ParamSet({'w_h_init': (0.0, 2.0),  # Initial hidden weights
                              'w_o_init': (0.0, 4.0),  # Initial output weights
-                             'w_bounds': (-np.inf, np.inf),  # Weight bounds
-                             'l2_pen': 1E-3,        # L2 weight penalty term
+                             'w_bounds': (-15., 15.),  # Weight bounds
+                             'l2_pen': 2E-3,        # L2 weight penalty term
                              'syn_scale': 0.1})     # Synaptic scaling
         # Patterns
         self.pattern = ParamSet({'neurons_f': 12,   # num. encoding nrns
@@ -68,7 +68,7 @@ class LatencyParam(SimParam):
         # Latency specific defaults
         self.net.update({'eta0': 300.,
                          'tau_max': 1000.,
-                         'cpd_scale': 4.})
+                         'cpd_scale': 2.})
         # Update defaults
         self.update(**kwargs)
 
