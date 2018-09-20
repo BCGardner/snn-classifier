@@ -6,6 +6,7 @@ Created on Jan 2018
 @author: BG
 
 Tex textwidth (multilayer-classifier): ~ 5.75 in
+Poster fighwidth: ~ 9 in
 Default fig scale: fig_height = fig_width / 1.5
 """
 
@@ -25,7 +26,8 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 fig_width = 5.5
 
 
-def confusion_matrix(mat, fig_width=fig_width, fname=None):
+def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
+                     dtick=20):
     """
     Plot square confusion matrix of size <true classes> by <predicted classes>,
     assuming accuracies as percentages normalised by each row.
@@ -35,13 +37,15 @@ def confusion_matrix(mat, fig_width=fig_width, fname=None):
     num_classes = len(mat)
     # Plot
     im = ax.imshow(mat, cmap='Blues', interpolation='none', vmin=0, vmax=100)
-    f.colorbar(im, ticks=np.arange(0, 120, 20))
+    cb = f.colorbar(im, ticks=np.arange(0, 120, dtick))
+    cb.ax.tick_params(labelsize=fontsize)
     # Add values
     thresh = mat.max() / 2.
     for i, j in itertools.product(range(mat.shape[0]), range(mat.shape[1])):
         ax.text(j, i, format(mat[i, j], '.1f'),
                 horizontalalignment="center",
-                color="white" if mat[i, j] > thresh else "black")
+                color="white" if mat[i, j] > thresh else "black",
+                fontsize=fontsize)
     # Labels
     ax.set_xticks(np.arange(0, num_classes + 1, 1))
     xticks = [clabel for clabel in range(num_classes)] + [r'$\emptyset$']
@@ -53,6 +57,9 @@ def confusion_matrix(mat, fig_width=fig_width, fname=None):
     plt.ylabel('True label')
     # Reverse x ticks
     ax.xaxis.tick_top()
+    # Set custom font sizes
+    if fontsize is not None:
+        set_fontsize(ax, fontsize)
     # Save
     print_plot(f, fname)
 
@@ -198,15 +205,17 @@ def errbars(*losses, **kwargs):
             'dx': None,
             'dy': None,
             'fig_width': fig_width,
-            'figsize': (4, 8/3.),
             'labels': None,
             'text': None,
+            'textsize': 14,
+            'fontsize': None,
+            'linewidth': 1.,
             'fname': None}
     for k, v in kwargs.items():
         if k in args:
             args[k] = v
     # Plot error as a function of epochs
-    figsize = (fig_width, fig_width / 1.5)
+    figsize = (args['fig_width'], args['fig_width'] / 1.5)
     f, ax = plt.subplots(figsize=figsize)
     # Epochs, mean, std
     num_epochs = len(losses[0])
@@ -216,7 +225,7 @@ def errbars(*losses, **kwargs):
         loss_av = np.mean(loss, 1)
         loss_std = np.std(loss, 1)
         # Evolution of loss
-        ax.plot(epochs, loss_av, '-', label=label)
+        ax.plot(epochs, loss_av, '-', label=label, linewidth=args['linewidth'])
         line_h = ax.get_lines()[-1]
         color = line_h.get_color()
         ax.fill_between(epochs, loss_av - loss_std, loss_av + loss_std,
@@ -225,7 +234,7 @@ def errbars(*losses, **kwargs):
     if args['labels'] is not None:
         for loss, label in zip(losses, args['labels']):
             plot_errbar(loss, label)
-        ax.legend()
+        ax.legend(fontsize=args['fontsize'])
     else:
         for loss in losses:
             plot_errbar(loss)
@@ -243,9 +252,12 @@ def errbars(*losses, **kwargs):
     plt.ylabel('Loss')
     plt.grid()
     if args['text'] is not None:
-        ax.text(0.95, 0.9, args['text'], transform=ax.transAxes,
-                fontsize=11, verticalalignment='top',
+        ax.text(0.5, 0.9, args['text'], transform=ax.transAxes,
+                fontsize=args['textsize'], verticalalignment='top',
                 horizontalalignment='right', bbox=props)
+    # Set custom font sizes
+    if args['fontsize'] is not None:
+        set_fontsize(ax, args['fontsize'])
     # Save
     print_plot(f, args['fname'])
 
@@ -281,6 +293,12 @@ def heatmap(data, figsize=None, fname=None, vmin=None, vmax=None,
         plt.savefig('out/{}.pdf'.format(fname), dpi=300)
     else:
         plt.show()
+
+
+def set_fontsize(ax, fontsize):
+    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                 ax.get_xticklabels() + ax.get_yticklabels()):
+        item.set_fontsize(fontsize)
 
 
 def print_plot(fig, fname=None):
