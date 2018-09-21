@@ -81,11 +81,16 @@ def spike_raster(st, figsize=None):
     plt.savefig('out/spike_raster')
 
 
-def spike_rasters(spikes_net, voltages=None,
+def spike_rasters(spikes, voltages=None, text=None, textsize=None,
+                  fontsize=None, linewidth=1,
                   figsize=(fig_width, 0.75 * fig_width), fname=None):
     """
     Plots input, hidden, output spike trains, optionally output voltages.
     """
+    # Net / pattern stats
+    num_inputs = len(spikes[0])
+    num_hidden = len(spikes[1])
+    num_outputs = len(spikes[-1])
 #    if voltages is not None:
 #        f, axarr = plt.subplots(4, figsize=figsize, sharex=True)
 #    else:
@@ -99,24 +104,30 @@ def spike_rasters(spikes_net, voltages=None,
             ax.set_ylim([0, ymax])
 
     # Input spike trains
-    st_panel(spikes_net[0], axarr[0], vline_size=2.)
-    axarr[0].set_yticks([0, 24, 48])
-    axarr[0].set_ylabel("Inputs")
+    st_panel(spikes[0], axarr[0], vline_size=2.)
+    axarr[0].set_yticks([0, np.ceil(num_inputs / 2.), num_inputs])
+    axarr[0].set_ylabel("Input")
+    # Sample class label
+    if text is not None:
+        axarr[0].text(0.95, 0.85, text, transform=axarr[0].transAxes,
+                      fontsize=textsize, verticalalignment='top',
+                      horizontalalignment='right', bbox=props)
+#    set_fontsize(axarr[0], fontsize)
     # Hidden spike trains
-    st_panel(spikes_net[1], axarr[1], vline_size=1.)
-    axarr[1].set_yticks([0, 10, 20])
+    st_panel(spikes[1], axarr[1], vline_size=1.)
+    axarr[1].set_yticks([0, 10, num_hidden])
     axarr[1].set_ylabel("Hidden")
     # Output [voltage traces,] spike trains
     if voltages is not None:
         for nrn, v in enumerate(voltages):
-            axarr[2].plot(times, v / 15. + nrn, label=str(nrn), linewidth=1)
+            axarr[2].plot(times, v / 15. + nrn, label=str(nrn), linewidth=2)
 #        axarr[2].set_ylim([-15., 30])
 #        axarr[2].set_yticks([0])
 #        axarr[2].set_ylabel("Voltage")
-        axarr[2].legend(loc="lower right", fontsize='x-small')
-    st_panel(spikes_net[2], axarr[2], vline_size=0.5, ymax=3)
-    axarr[2].set_yticks([0, 3])
-    axarr[2].set_ylabel("Outputs")
+#        axarr[2].legend(loc="lower right", fontsize='x-small')
+    st_panel(spikes[2], axarr[2], vline_size=0.5, ymax=num_outputs)
+    axarr[2].set_yticks([0, num_outputs])
+    axarr[2].set_ylabel("Output")
     # [Output voltage traces]
 #    if voltages is not None:
 #        for nrn, v in enumerate(voltages):
@@ -129,12 +140,13 @@ def spike_rasters(spikes_net, voltages=None,
     plt.xlim([0., 40.])
     plt.xlabel('Time (ms)')
     plt.xticks(np.arange(0, 50, 10))
+    # Set font size
+    if fontsize is not None:
+        for arr in axarr:
+            set_fontsize(arr, fontsize)
     # Spacing
-    f.subplots_adjust(hspace=0.2)
-    if fname is not None:
-        plt.savefig('out/{}.pdf'.format(fname), dpi=300)
-    else:
-        plt.show()
+#    f.subplots_adjust(hspace=hspace)
+    print_plot(f, fname)
 
 
 def weight_heatmaps(weights, figsize=(8.0, 6.0), fname=None):
