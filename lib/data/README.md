@@ -4,7 +4,7 @@ Name		Description			Link
 ====		===========			====
 iris		sklearn demo set		N/A
 wisconsin	UCI set (1996)			https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data
-wisc_original	UCI set as used in Bohte (1992) https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/breast-cancer-wisconsin.data
+wisc		UCI set as used in Bohte (1992) https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/breast-cancer-wisconsin.data
 wisc_nmf	NMF decomposed wisc_original	N/A
 
 Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup as follows:

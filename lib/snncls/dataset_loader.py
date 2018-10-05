@@ -9,6 +9,8 @@ Dataset loading functions.
 """
 
 import os
+import numpy as np
+from mnist import MNIST
 
 import snncls.preprocess as pp
 import snncls.helpers as hp
@@ -50,4 +52,10 @@ def load_data_file(data_id):
     # Load dataset
     data_path = os.path.join(os.path.dirname(__file__), '../data')
     fname = os.path.join(data_path, '{}.pkl.gz'.format(data_id))
-    return hp.load_data(fname)
+    if data_id == 'mnist':
+        data_path = os.path.join(data_path, 'mnist')
+        mndata = MNIST(data_path)
+        data, labels = mndata.load_training()
+        return np.array(data, dtype=float), np.array(labels, dtype=int)
+    else:
+        return hp.load_data(fname)

@@ -33,6 +33,7 @@ class SimParam(object):
         self.cell = ParamSet({'tau_m': 10.,      # Membrane time constant (ms)
                               'tau_s': 5.,       # Synaptic rise time (ms)
                               'theta': 15.,      # Firing threshold (mV)
+                              'cm': 2.5,         # Membrane capacitance (nF)
                               'kappa_0': -15.,   # Reset strength (mV)
                               'psp_coeff': 4.})  # psp coeff (mV)
         # Network (based on iris dataset with latency decoding)

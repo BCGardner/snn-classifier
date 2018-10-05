@@ -57,6 +57,99 @@ def transform_data(X, y, param, receptor=None, num_classes=None):
     return zip(inputs_tr, y_enc)
 
 
+class Integrator(object):
+    """
+    Converts real-valued feature vectors into spike latencies based on constant
+    current stimulus driving each LIF neuron. Assume features shares the same
+    data range. One-one association: input features -> encoders.
+    """
+    def __init__(self, curr_max=20., tau_m=10., cm=2.5, theta=15.,
+                 ltcy_max=9.):
+        """
+        Sets transformation parameters.
+
+        Inputs
+        ------
+        curr_max : float
+            Maximum injected current per input.
+        tau_m : float
+            LIF membrane time constant.
+        cm : float
+            LIF membrane capacitance.
+        ltcy_max : float
+            Maximum latency.
+        """
+        self.curr_max = curr_max
+        self.tau_m = tau_m
+        self.R = tau_m / cm  # LIF membrane resistance
+        self.theta = theta  # LIF firing threshold
+        self.ltcy_max = ltcy_max
+        self._num_fitted_samples = 0
+        self._num_fitted_features = 0
+        self._X_min = np.nan
+        self._X_max = np.nan
+        # Minimum driving voltage for target output latency range
+        self.volts_min = theta / (1. - np.exp(-ltcy_max / tau_m))
+
+    def fit_transform(self, X):
+        """
+        Fit the model to training data, and return its transformation.
+
+        Inputs
+        ------
+        X : array, shape (num_samples, num_features)
+            Training set.
+
+        Output
+        ------
+        latencies : array, shape (num_samples, num_encoding_nrns)
+            Set of spike latencies.
+        """
+        self.fit(X)
+        return self.transform(X)
+
+    def transform(self, X):
+        """
+        Transforms data samples into array of spike latencies, up to 9 ms,
+        given a previous fit on training data. Values are clipped to fitted
+        data range.
+        X (num_samples, num_features) -> latencies (num_samples, num_enc_nrns)
+        """
+        if self._num_fitted_samples == 0:
+            raise Exception('This model has not been fitted yet.')
+        assert X.shape[1] == self._num_fitted_features
+        # Intensity of responses
+        m, n = X.shape
+        ltcys = np.full((m, n), np.inf)
+        # Clip and normalise data
+        X_ = np.clip(X, self._X_min, self._X_max)
+        X_ /= self._X_max
+        # Convert to constant current stimuli
+        X_ *= self.curr_max
+        volts = self.R * X_  # Driving voltage per input
+        ltcy_mask = volts > self.volts_min
+        ltcys[ltcy_mask] = self.tau_m * np.log(volts[ltcy_mask] /
+                                               (volts[ltcy_mask] - self.theta))
+        return ltcys
+
+    def fit(self, X):
+        """
+        Fits this model to example training data, by estimating
+        each feature range.
+
+        Inputs
+        ------
+        X : array, shape (num_samples, num_features)
+            Training set.
+        """
+        # num_samples, num_features
+        m, n = X.shape
+        # Update fitted parameters
+        self._num_fitted_samples = m
+        self._num_fitted_features = n
+        self._X_min, self._X_max = np.min(X), np.max(X)
+
+
 class ReceptiveFields(object):
     """
     Converts real-valued feature vectors into spike latencies based on
