@@ -4,6 +4,8 @@
 Created on Thu May 10 19:42:01 2018
 
 @author: BG
+@licence: GNU v3
+@file One sentence describing the purpouse of this file.
 """
 
 from __future__ import division

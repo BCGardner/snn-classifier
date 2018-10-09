@@ -4,6 +4,9 @@
 Created on Thu May 10 22:46:08 2018
 
 @author: BG
+@licence: GNU v3
+
+@file This file implements... 
 """
 
 import numpy as np
@@ -16,10 +19,11 @@ class Playback(object):
     """
     Plays back recordings from scanners.
     """
-    def __init__(self, bounds, times, wait=0.05):
+    def __init__(self, bounds, times, duration, wait=0.05):
         self.x_lim = np.array([0, bounds[1]])
         self.y_lim = np.array([0, bounds[0]])
         self.times = times
+        self.duration = duration
         self.wait = wait
 
     def setup_plot(self, ax, img=None):
@@ -43,30 +47,25 @@ class Playback(object):
 #        # Limits
 #        ax.set_xlim(self.x_lim + [-.2, .2])
 #        ax.set_ylim(self.y_lim + [-.2, .2])
-#        # Ticks
-#        ax.set_xticks(np.arange(0, self.x_lim[1] + 2, 2))
-#        ax.set_yticks(np.arange(0, self.y_lim[1] + 2, 2))
+        # Ticks
+        ax.set_xticks(np.arange(0, self.x_lim[1] + 4, 4))
+        ax.set_yticks(np.arange(0, self.y_lim[1] + 4, 4))
         # Labels
         ax.set_title('{}'.format(self.times[0]))
 
-    def play(self, recs, scanners, img=None, prompt=False):
+    def setup_scanners(self, ax, recs):
         """
-        Playback scanner recordings.
+        Initial scanner plots, return handle on dynamic objects.
         """
-        num_scanners = len(scanners)
-        # Figure setup
-        plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        # Setup
-        self.setup_plot(ax, img)
         # Plot each scanline and dynamic point
         points = []
         colors = []
-        for rec, scan in zip(recs['r'], scanners):
-            l, = ax.plot(scan.points[:, 0], scan.points[:, 1], '-')
+        for rec in recs['r']:
+            (x1, y1), (x2, y2) = rec[0], rec[-1]
+            l, = ax.plot([x1, x2], [y1, y2], '-')
             colors.append(l.get_color())
-            points.append(ax.plot(rec[0, 0], rec[0, 1], 'o')[0])
+            points.append(ax.plot(rec[0, 0], rec[0, 1], 'ko')[0])
+            points[-1].set_markerfacecolor(colors[-1])
             points[-1].set_markerfacecolor(colors[-1])
         # Plot dynamic activations
         acts = []
@@ -77,23 +76,29 @@ class Playback(object):
                                                        1., 1.,
                                                        facecolor=colors[idx],
                                                        alpha=.3)))
+        return points, acts, colors
+
+    def play(self, recs, img=None, prompt=False):
+        """
+        Playback scanner recordings.
+        """
+        num_scanners = len(recs['r'])
+        # Figure setup
+        plt.ion()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        # Setup image and get dynamic objects
+        self.setup_plot(ax, img)
+        points, acts, _ = self.setup_scanners(ax, recs)
         # Run
         for step, t in enumerate(self.times):
             for idx in range(num_scanners):
                 # Update points
                 x, y = recs['r'][idx][step, :]
-                points[idx].set_xdata(x)
-                points[idx].set_ydata(y)
+                points[idx].set_data(x, y)
                 # Update activations
                 y, x = recs['addr'][idx][step]
                 acts[idx].set_xy((x, y))
-#            for idx, rec in enumerate(recs['r']):
-#                # Update points
-#                x, y = rec[step, :]
-#                points[idx].set_xdata(x)
-#                points[idx].set_ydata(y)
-#                # Update activations
-#                acts[idx].set_xy()
             ax.set_title('{}'.format(t))
             fig.canvas.draw()
             if prompt:
@@ -101,6 +106,55 @@ class Playback(object):
             else:
                 time.sleep(self.wait)
             fig.canvas.flush_events()
+
+    def play_nrns(self, recs, img=None, prompt=False):
+        """
+        Playback scanner and nrn recordings.
+        """
+        num_scanners = len(recs['r'])
+        # Figure setup
+        plt.ion()
+        fig, axes = plt.subplots(1, 2)
+        # Setup image, dynamics
+        self.setup_plot(axes[0], img)  # Image
+        points, acts, colors = self.setup_scanners(axes[0], recs)  # Scanners
+        # Spike raster
+        axes[1].set_xlim([0., self.duration])
+        axes[1].set_ylim([0, num_scanners])
+        asp = np.diff(axes[1].get_xlim())[0] / np.diff(axes[1].get_ylim())[0]
+        axes[1].set_aspect(asp)  # Set aspect to match image
+        l_spikes = []  # Handle on spike vlines
+        for idx in range(num_scanners):
+            l_spikes.append(axes[1].vlines([], 0., 1., colors=colors[idx]))
+        # Sweeping line
+        l_sweep, = axes[1].plot([0., 0.], [0., num_scanners],
+                                'k:', linewidth=1)
+        # Run
+        for step, t in enumerate(self.times):
+            for idx in range(num_scanners):
+                # Update points
+                x, y = recs['r'][idx][step, :]
+                points[idx].set_data(x, y)
+                # Update activations
+                y, x = recs['addr'][idx][step]
+                acts[idx].set_xy((x, y))
+                # Plot spikes up to t
+                spikes = np.array(recs['spikes'][idx])
+                spikes = spikes[spikes <= t]
+                segs = []
+                for spike in spikes:
+                    segs.append(np.stack([2 * [spike], [idx, idx + 1]], 1))
+                l_spikes[idx].set_segments(segs)
+                # Shift sweeping line
+                l_sweep.set_xdata((t, t))
+            axes[0].set_title('{}'.format(t))
+            fig.canvas.draw()
+            if prompt:
+                raw_input()
+            else:
+                time.sleep(self.wait)
+            fig.canvas.flush_events()
+        raw_input("press any key ")
 
 
 def crosses(scan):

@@ -4,6 +4,7 @@
 Created on Thu May 10 19:00:27 2018
 
 @author: BG
+@licence: GNU v3
 """
 
 import numpy as np

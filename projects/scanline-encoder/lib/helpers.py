@@ -4,6 +4,7 @@
 Created on Mon May 14 00:02:03 2018
 
 @author: BG
+@licence: GNU v3
 """
 
 from __future__ import division
