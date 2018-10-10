@@ -78,6 +78,7 @@ def main(opt):
     playbk.play_nrns(rec, img_scan, opt.prompt)
 #    plt.plot(times, rec['v'][:, 2])
     plt.show()
+    return rec
 
 
 if __name__ == "__main__":
@@ -98,4 +99,4 @@ if __name__ == "__main__":
                         help="plot speed")
     args = parser.parse_args()
 
-    main(args)
+    rec = main(args)
