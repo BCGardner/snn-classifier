@@ -54,7 +54,7 @@ def main(opt):
     rec['i'] = [np.full(num_steps, np.nan) for i in xrange(num_scanners)]
     rec['addr'] = [[] for i in xrange(num_scanners)]  # Stores [(row, col), ...]
     rec['v'] = np.full((num_steps, num_scanners), np.nan)  # Nrn voltages
-    rec['spikes'] = [[] for i in xrange(num_scanners)]
+    rec['spikes'] = [np.array([]) for i in xrange(num_scanners)]
 
     # Scan data
     for step, t in enumerate(times):
@@ -71,7 +71,7 @@ def main(opt):
             scan.translate(dt)
             # Record nrn
             if fired:
-                rec['spikes'][idx].append(t)
+                rec['spikes'][idx] = np.append(rec['spikes'][idx], t)
     # Plot data
     playbk = plotter.Playback(bounds, times, duration, opt.wait)
     #playbk.play(rec, img_scan, opt.prompt)
