@@ -46,3 +46,9 @@ Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup 
 - Normalising this dataset gives better accuracy.
 - Using an MLP containing 30 hidden neurons gives an accuracy of 96.8 % after normalisation, after 601 iterations.
 
+## mnist_spikes
+
+- Contains 150 samples, X spike trains per sample.
+- Raw output of scanline-encoder on a subset of MNIST.
+- Subset and number of spike trains subject to change.
+

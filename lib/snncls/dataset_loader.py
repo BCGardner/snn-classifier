@@ -16,7 +16,7 @@ import snncls.preprocess as pp
 import snncls.helpers as hp
 
 
-def load_data_spiking(data_id, param):
+def load_data_spiking(data_id, param, transform=pp.transform_data):
     """
     Loads a dataset in form of 2-tuple: (X, y), preprocesses features, changes
     format of data, and returns predetermined PSPs evoked due to input layer,
@@ -41,7 +41,7 @@ def load_data_spiking(data_id, param):
     # Load dataset
     X, y = load_data_file(data_id)
     # Preprocess data
-    data_tr = pp.transform_data(X, y, param)
+    data_tr = transform(X, y, param)
     return data_tr
 
 

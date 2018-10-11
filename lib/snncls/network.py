@@ -138,7 +138,7 @@ class Network(object):
             return kernel
         # Look-up tables
         lut_refr = refr(0)
-        lut_psp = preprocess.psp(np.arange(0, num_iter) *
+        lut_psp = preprocess.psp_reduce(np.arange(0, num_iter) *
                                  self.dt, np.array([0.]), **self.cell_params)
         # PSPs evoked by input neurons
         psps = psp_inputs
@@ -238,7 +238,7 @@ class Network(object):
             return kernel
         # Look-up tables
         lut_refr = refr(0)
-        lut_psp = preprocess.psp(np.arange(0, num_iter) *
+        lut_psp = preprocess.psp_reduce(np.arange(0, num_iter) *
                                  self.dt, np.array([0.]), **self.cell_params)
         # PSPs evoked by input neurons
         psps = psp_inputs

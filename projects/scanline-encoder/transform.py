@@ -13,9 +13,8 @@ import matplotlib.pyplot as plt
 import argparse
 import json
 
-from snncls import dataset_loader, preprocess
+from snncls import dataset_loader, preprocess, helpers
 from lib import scanner, neuron, plotter
-import lib.helpers as hp
 
 bounds = (28, 28)
 
@@ -25,16 +24,17 @@ def main(opt):
     rng = np.random.RandomState(opt.seed)
     # Data
     data_id = 'mnist'
-    X, _ = dataset_loader.load_data_file(data_id)
+    X, y = dataset_loader.load_data_file(data_id)
+    idxs = np.arange(len(X))
     # Normalisation
     data_min = np.min(X)
     data_range = np.max(X) - data_min
     X = (X - data_min) / data_range
     # [Randomise data selection]
     if opt.randomise:
-        rng.shuffle(X)
+        rng.shuffle(idxs)
     # Data selection
-    X = X[:opt.num_cases]
+    X, y = X[idxs][:opt.num_cases], y[idxs][:opt.num_cases]
     # Scanners
     duration = opt.duration
     dt = 0.1
@@ -118,7 +118,7 @@ def main(opt):
                         dpi=300)
         else:
             plt.show()
-    return spike_trains
+    return spike_trains, y
 
 
 if __name__ == "__main__":
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--randomise", action="store_true",
                         help="optional, randomise data selection")
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("-n", "--num_cases", type=int, default=1,
+    parser.add_argument("-n", "--num_cases", type=int, default=10,
                         help="size of samples selected")
     # Scanners
     parser.add_argument("-d", "--duration", type=float, default=9.,
@@ -145,11 +145,11 @@ if __name__ == "__main__":
     parser.add_argument("--fname", type=str, default=None)
     args = parser.parse_args()
 
-    spike_trains = main(args)
+    data = main(args)
 
     # Save results
     if args.fname is not None:
-        np.save('out/{}'.format(args.fname), spike_trains)
+        helpers.save_data(data, 'out/{}.pkl.gz'.format(args.fname))
         # Config
         with open('out/{}_cfg.json'.format(args.fname), 'w') as h:
             json.dump(vars(args), h, indent=4)
