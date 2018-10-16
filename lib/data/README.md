@@ -48,7 +48,7 @@ Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup 
 
 ## mnist_spikes
 
-- Contains 150 samples, X spike trains per sample.
 - Raw output of scanline-encoder on a subset of MNIST.
-- Subset and number of spike trains subject to change.
+- scan lines matched to Loihi paper (five total).
+- Contains 600 samples, selected randomly (seed 42).
 

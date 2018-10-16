@@ -13,10 +13,13 @@ import matplotlib.pyplot as plt
 import argparse
 import json
 
-from snncls import dataset_loader, preprocess, helpers
+from snncls import dataset_loader, helpers
 from lib import scanner, neuron, plotter
 
 bounds = (28, 28)
+# Matched to Intel's Loihi encoder for 28x28
+line_eqs_loihi = [(0.844, 6.27), (1.00, -4.62), (-250., 5733.),
+                  (-1.654, 23.156), (-0.59, 30.509)]
 
 
 def main(opt):
@@ -40,11 +43,13 @@ def main(opt):
     dt = 0.1
     times = np.arange(0., duration, dt)
     num_steps = len(times)
-    #line_eqs = [(-2, 3), (2, 2)]
 
-    # Matched to Intel's Loihi encoder
-    line_eqs = [(0.857, 4.00), (1.00, -3.00), (-80.0, 1060.),
-                (-0.615, 17.8), (-1.63, 13.0)]
+    # Line equations
+    if opt.norm:
+        line_eqs = []
+    else:
+        line_eqs = line_eqs_loihi
+    # Setup scanners
     scanners = []
     for eq in line_eqs:
         scanners.append(scanner.Scanner(eq, bounds, duration))
@@ -132,6 +137,13 @@ if __name__ == "__main__":
     # Scanners
     parser.add_argument("-d", "--duration", type=float, default=9.,
                         help="scan duration")
+    # Random distr.
+    parser.add_argument("--norm", action="store_true",
+                        help="normally-distributed scanlines")
+    parser.add_argument("-s", "--scans", type=int, default=5,
+                        help="number of randomly-oriented scanlines")
+    parser.add_argument("--scale", type=float, default=6.,
+                        help="scale parameter of normal distribution")
     # Neurons
     parser.add_argument("--nrn", type=str, default='lif',
                         help="neuron types: 'lif', 'izh'")
@@ -146,6 +158,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data = main(args)
+    # Class frequencies
+    print 'class counts:' + \
+        str([np.sum(data[1] == i) for i in np.unique(data[1])])
 
     # Save results
     if args.fname is not None:
