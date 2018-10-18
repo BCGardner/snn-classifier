@@ -14,7 +14,7 @@ import argparse
 import json
 
 from snncls import dataset_loader, helpers
-from lib import scanner, neuron, plotter
+from lib import scanner, neuron, plotter, common
 
 bounds = (28, 28)
 # Matched to Intel's Loihi encoder for 28x28
@@ -46,7 +46,7 @@ def main(opt):
 
     # Line equations
     if opt.norm:
-        line_eqs = []
+        line_eqs = common.generate_eqs(opt.scans, scale=opt.scale)
     else:
         line_eqs = line_eqs_loihi
     # Setup scanners
