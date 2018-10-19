@@ -46,7 +46,7 @@ def main(opt):
 
     # Line equations
     if opt.norm:
-        line_eqs = common.generate_eqs(opt.scans, scale=opt.scale)
+        line_eqs = common.generate_eqs(opt.scans, scale=opt.scale, rng=rng)
     else:
         line_eqs = line_eqs_loihi
     # Setup scanners
@@ -140,9 +140,9 @@ if __name__ == "__main__":
     # Random distr.
     parser.add_argument("--norm", action="store_true",
                         help="normally-distributed scanlines")
-    parser.add_argument("-s", "--scans", type=int, default=5,
+    parser.add_argument("-s", "--scans", type=int, default=6,
                         help="number of randomly-oriented scanlines")
-    parser.add_argument("--scale", type=float, default=6.,
+    parser.add_argument("--scale", type=float, default=0.2,
                         help="scale parameter of normal distribution")
     # Neurons
     parser.add_argument("--nrn", type=str, default='lif',
