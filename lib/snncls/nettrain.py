@@ -44,8 +44,8 @@ class NetworkTraining(network.Network):
         self.corr = LearnWindow(param)
 
     def SGD(self, tr_data, epochs, mini_batch_size, te_data=None,
-            report=True, debug=False, early_stopping=False, tol=1e-5,
-            solver='sgd', **kwargs):
+            report=True, epochs_r=5, debug=False, early_stopping=False,
+            tol=1e-5, solver='sgd', **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -64,7 +64,9 @@ class NetworkTraining(network.Network):
         te_data : list, optional
             Test data: list of 2-tuples (X, Y).
         report : bool
-            Print num. epochs.
+            Print loss every epochs_r.
+        epochs_r : int
+            Num. epochs per report.
         debug : bool
             Additional readings: weights.
         early_stopping : bool, requires te_data
@@ -121,9 +123,9 @@ class NetworkTraining(network.Network):
         rec = {'tr_loss': np.full(epochs, np.nan)}
         if debug:
             rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in self.w]
-            if solver == 'rmsprop':
-                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
-                              for w in self.w]
+#            if solver == 'rmsprop':
+#                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
+#                              for w in self.w]
         if te_data is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
             # Initial test loss for early stopping
@@ -154,9 +156,9 @@ class NetworkTraining(network.Network):
             if debug:
                 for l in xrange(self.num_layers-1):
                     rec['w'][l][j] = self.w[l].copy()
-                if solver == 'rmsprop':
-                    for l in xrange(self.num_layers-1):
-                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
+#                if solver == 'rmsprop':
+#                    for l in xrange(self.num_layers-1):
+#                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
             # Determine loss on training / test data
             rec['tr_loss'][j] = self.loss(tr_data)
             if te_data is not None:
@@ -170,8 +172,8 @@ class NetworkTraining(network.Network):
                         print "Stop Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
                         break
             # Report training / test error rates per epoch
-            if report and not j % 5:
-                print "Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
+            if report and not j % epochs_r:
+                print "Epochs: {0}\t\t{1:.3f}".format(j + 1, rec['tr_loss'][j])
 #                print "Epoch {0}:\ttrain:\t{1:.3f}".format(
 #                        j + 1, self.evaluate(tr_data))
 #                if te_data is not None:
