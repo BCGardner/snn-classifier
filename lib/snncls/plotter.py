@@ -26,8 +26,38 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 fig_width = 5.5
 
 
+def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
+                 fname=None):
+    """
+    Plot output and hidden weight distributions, side by side.
+    """
+    figsize = (fig_width, fig_width / 1.5)
+    f, axarr = plt.subplots(2, figsize=figsize, sharex=True)
+    # Plot hidden weights
+    axarr[0].hist(w_h.ravel(), bins)
+    y_max = axarr[0].get_ybound()[-1]
+    dy = y_max / num_yticks
+    axarr[0].set_yticks(np.arange(0, y_max + 1, dy))
+    axarr[0].set_ylabel('Count')
+    axarr[0].text(0.9, 0.9, 'Hidden', transform=axarr[0].transAxes,
+                  fontsize=14, verticalalignment='top',
+                  horizontalalignment='right', bbox=props)
+    # Plot output weights
+    axarr[1].hist(w_o.ravel(), bins)
+    y_max = axarr[1].get_ybound()[-1]
+    dy = y_max / num_yticks
+    axarr[1].set_yticks(np.arange(0, y_max + 1, dy))
+    axarr[1].set_xlabel('Weight')
+    axarr[1].set_ylabel('Count')
+    axarr[1].text(0.9, 0.9, 'Output', transform=axarr[1].transAxes,
+                  fontsize=14, verticalalignment='top',
+                  horizontalalignment='right', bbox=props)
+    # Save
+    print_plot(f, fname)
+
+
 def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
-                     dtick=20):
+                     dtick=20, skip_zero=False):
     """
     Plot square confusion matrix of size <true classes> by <predicted classes>,
     assuming accuracies as percentages normalised by each row.
@@ -42,6 +72,9 @@ def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
     # Add values
     thresh = mat.max() / 2.
     for i, j in itertools.product(range(mat.shape[0]), range(mat.shape[1])):
+        if skip_zero:
+            if mat[i, j] == 0.:
+                continue
         ax.text(j, i, format(mat[i, j], '.1f'),
                 horizontalalignment="center",
                 color="white" if mat[i, j] > thresh else "black",
@@ -105,7 +138,7 @@ def spike_rasters(spikes, voltages=None, text=None, textsize=None,
 
     # Input spike trains
     st_panel(spikes[0], axarr[0], vline_size=2.)
-    axarr[0].set_yticks([0, np.ceil(num_inputs / 2.), num_inputs])
+    axarr[0].set_yticks([0, num_inputs])
     axarr[0].set_ylabel("Input")
     # Sample class label
     if text is not None:
@@ -115,7 +148,7 @@ def spike_rasters(spikes, voltages=None, text=None, textsize=None,
 #    set_fontsize(axarr[0], fontsize)
     # Hidden spike trains
     st_panel(spikes[1], axarr[1], vline_size=1.)
-    axarr[1].set_yticks([0, 10, num_hidden])
+    axarr[1].set_yticks([0, num_hidden])
     axarr[1].set_ylabel("Hidden")
     # Output [voltage traces,] spike trains
     if voltages is not None:
