@@ -52,6 +52,27 @@ def norm_points(p1=(None, None), p2=(None, None), **kwargs):
     return tuple(ps[0]), tuple(ps[1])
 
 
+def generate_eqs_ctr(num_eqs, bounds=(28., 28.), rng=np.random.RandomState(),
+                     **kwargs):
+    """
+    Generate a set of line equations, according to intercepts randomly
+    positioned about the grid centre, and random line orientations.
+    """
+    line_eqs = []
+    for idx in xrange(num_eqs):
+        # Random point intercepts, following normal distribution located at
+        # grid centre
+        x = norm(rng=rng, **kwargs)
+        y = norm(rng=rng, **kwargs)
+        # Random line orientations following uniform distr.
+        theta = rng.uniform(0., np.pi)
+        m = np.tan(theta)
+        c = y * bounds[1] - m * x * bounds[0]
+        # Line eq.
+        line_eqs.append((m, c))
+    return line_eqs
+
+
 def generate_eqs(num_eqs, seq=[4, 1, 2, 3, 0, 5], random_sides=False,
                  distr=norm_points, bounds=(28., 28.), **kwargs):
     """
