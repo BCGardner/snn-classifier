@@ -45,10 +45,12 @@ def main(opt):
     num_steps = len(times)
 
     # Line equations
-    if opt.norm:
-        line_eqs = common.generate_eqs(opt.scans, scale=opt.scale, rng=rng)
-    else:
+    if opt.distr == 'loihi':
         line_eqs = line_eqs_loihi
+    elif opt.distr == 'edges':
+        line_eqs = common.generate_eqs(opt.scans, scale=opt.scale, rng=rng)
+    elif opt.distr == 'ctr':
+        line_eqs = common.generate_eqs_ctr(opt.scans, scale=opt.scale, rng=rng)
     # Setup scanners
     scanners = []
     for eq in line_eqs:
@@ -138,11 +140,11 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--duration", type=float, default=9.,
                         help="scan duration")
     # Random distr.
-    parser.add_argument("--norm", action="store_true",
-                        help="normally-distributed scanlines")
+    parser.add_argument("--distr", type=str, default='loihi',
+                        help="line distributions: 'loihi', 'edges', 'ctr'")
     parser.add_argument("-s", "--scans", type=int, default=6,
                         help="number of randomly-oriented scanlines")
-    parser.add_argument("--scale", type=float, default=0.2,
+    parser.add_argument("--scale", type=float, default=0.25,
                         help="scale parameter of normal distribution")
     # Neurons
     parser.add_argument("--nrn", type=str, default='lif',
@@ -156,6 +158,9 @@ if __name__ == "__main__":
     # Save preprocessed data
     parser.add_argument("--fname", type=str, default=None)
     args = parser.parse_args()
+
+    # Type safety
+    assert args.distr in ['loihi', 'edges', 'ctr']
 
     data = main(args)
     # Class frequencies
