@@ -41,8 +41,8 @@ def load_data_spiking(data_id, param, transform=pp.transform_data):
     # Load dataset
     X, y = load_data_file(data_id)
     # Preprocess data
-    data_tr = transform(X, y, param)
-    return data_tr
+    data_set = transform(X, y, param)
+    return data_set
 
 
 def load_data_file(data_id):

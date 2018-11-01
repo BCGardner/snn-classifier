@@ -139,7 +139,8 @@ class Network(object):
         # Look-up tables
         lut_refr = refr(0)
         lut_psp = preprocess.psp_reduce(np.arange(0, num_iter) *
-                                 self.dt, np.array([0.]), **self.cell_params)
+                                        self.dt, np.array([0.]),
+                                        **self.cell_params)
         # PSPs evoked by input neurons
         psps = psp_inputs
         # Hidden layer responses: l = [1, L)
