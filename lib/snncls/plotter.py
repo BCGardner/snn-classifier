@@ -57,7 +57,7 @@ def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
 
 
 def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
-                     dtick=20, skip_zero=False):
+                     dtick=20, skip_lteq=0.):
     """
     Plot square confusion matrix of size <true classes> by <predicted classes>,
     assuming accuracies as percentages normalised by each row.
@@ -72,9 +72,8 @@ def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
     # Add values
     thresh = mat.max() / 2.
     for i, j in itertools.product(range(mat.shape[0]), range(mat.shape[1])):
-        if skip_zero:
-            if mat[i, j] == 0.:
-                continue
+        if mat[i, j] <= skip_lteq:
+            continue
         ax.text(j, i, format(mat[i, j], '.1f'),
                 horizontalalignment="center",
                 color="white" if mat[i, j] > thresh else "black",
