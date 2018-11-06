@@ -85,9 +85,12 @@ def transform_spikes(X, y, param, receptor=None, num_classes=None):
     y_enc = onehot_encode(y, num_classes=num_classes)
     if receptor is None:
         # Predetermine PSPs, return as list of 2-tuples
-        # containing (psps, spikes)
-        inputs = patterns_psps(X, param.dt, param.pattern['duration'],
-                               return_trains=True, **param.cell)
+        # containing [(psps_0, pattern_0), ...]
+        inputs = [None] * len(X)
+        for idx, pattern in enumerate(X):
+            psps = pattern2psps(pattern, param.dt, param.pattern['duration'],
+                                **param.cell)
+            inputs[idx] = (psps, pattern)
         return zip(inputs, y_enc)
     else:
         pass
@@ -120,20 +123,16 @@ def onehot_encode(y, num_classes=None):
     return y_
 
 
-def patterns_psps(patterns, dt, duration, return_trains=False, **kwargs):
+def pattern2psps(pattern, dt, duration, **kwargs):
     """
-    Transform a set of spike patterns, where each pattern consists of a set of
-    spike trains, into their evoked PSPs, for given duration and time step.
-    Optionally also return original spike patterns.
+    Transform a spike pattern containing a set of spike trains into their
+    evoked PSPs, for given duration and time step.
     """
     times = np.arange(0., duration, dt)
-    # Evoked PSPs due to each spike pattern
-    psps = [np.stack([psp_reduce(times, spike_trains)
-            for spike_trains in pattern]) for pattern in patterns]
-    if return_trains:
-        return zip(psps, patterns)
-    else:
-        return psps
+    # Evoked PSPs due to the spike pattern
+    psps = np.stack([psp_reduce(times, spike_train, **kwargs)
+                     for spike_train in pattern])
+    return psps
 
 
 def latencies_psps(spikes, dt, duration, return_trains=False, **kwargs):
@@ -160,13 +159,32 @@ def latencies_psps(spikes, dt, duration, return_trains=False, **kwargs):
     # Determine evoked PSPs, each sample has shape (num_nrns, num_iter)
     psps = [psp(times, s, **kwargs).T for s in spikes]
     if return_trains:
-        spike_trains = [None] * len(spikes)
-        for idx, latencies in enumerate(spikes):
-            spike_trains[idx] = [np.array([s]) if not np.isinf(s)
-                                 else np.array([]) for s in latencies]
-        return zip(psps, spike_trains)
+        patterns = latencies2patterns(spikes)
+        return zip(psps, patterns)
     else:
         return psps
+
+
+def latencies2patterns(latencies):
+    """
+    Converts an array of spike latencies into their corresponding spike
+    patterns.
+
+    Input
+    -----
+    latencies : array, shape (num_samples, num_nrns)
+        Array of spike latencies.
+
+    Output
+    ------
+    patterns : list, len (num_samples)
+        List of spike patterns, each containing a list of spike trains.
+    """
+    patterns = [None] * len(latencies)
+    for idx, latencies in enumerate(latencies):
+        patterns[idx] = [np.array([s]) if not np.isinf(s)
+                         else np.array([]) for s in latencies]
+    return patterns
 
 
 def psp(times, spikes, **kwargs):
