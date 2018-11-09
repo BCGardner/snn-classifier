@@ -46,7 +46,7 @@ class NetworkTraining(network.Network):
         self.corr = LearnWindow(param)
 
     def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
-            report=True, epochs_r=5, debug=False, early_stopping=False,
+            report=True, epochs_r=1, debug=False, early_stopping=False,
             tol=1e-5, solver='sgd', **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
@@ -175,7 +175,7 @@ class NetworkTraining(network.Network):
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
-                print "Epochs: {0}\t\t{1:.3f}".format(j + 1, rec['tr_loss'][j])
+                print "Epoch: {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
 #                print "Epoch {0}:\ttrain:\t{1:.3f}".format(
 #                        j + 1, self.evaluate(data_tr))
 #                if data_te is not None:
