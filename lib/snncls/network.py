@@ -5,7 +5,12 @@ Created on Mar 2017
 
 @author: BG
 
-Define multilayer network object, which minimises cross-entropy loss.
+Define multilayer network object, used for network training.
+
+TODO: Implement two network types and have them contained rather than inherited
+by a training class:
+    1) LIF-type (optimised for large datasets)
+    2) general-type (works with any provided neuron type))
 """
 
 from __future__ import division
@@ -17,7 +22,8 @@ from snncls import escape_noise, preprocess
 
 class Network(object):
     """
-    Feed-forward spiking neural network.
+    Feed-forward spiking neural network with no conduction delays. Subthreshold
+    neuronal dynamics are governed by LIF model in all layers.
     """
     def __init__(self, sizes, param, weights=None,
                  EscapeRate=escape_noise.ExpRate):
@@ -50,6 +56,12 @@ class Network(object):
         # Optimisations
         self.decay_m = param.decay_m
         self.decay_s = param.decay_s
+        # Look up tables for default sim. durations
+        times = np.arange(0., self.duration, self.dt)
+        self.lut = {'psp': preprocess.psp_reduce(times, np.array([0.]),
+                                                 **self.cell_params),
+                    'refr': preprocess.refr_reduce(times, np.array([0.]),
+                                                   **self.cell_params)}
         # Initialise network state
         self.reset(weights=weights)
 
@@ -112,14 +124,11 @@ class Network(object):
         """
         # === Initialise ==================================================== #
 
-        # Compute PSPs evoked by input layer
-        if type(stimulus) is list:
-            psp_inputs = \
-                preprocess.pattern2psps(stimulus, self.dt, self.duration,
-                                        **self.cell_params)
-        else:
-            psp_inputs = stimulus
+        # Cast stimulus to PSPs evoked by input neurons
+        psp_inputs = self.stimulus_as_psps(stimulus)
         num_iter = psp_inputs.shape[1]
+        # Ensure pattern duration is compatible with look up tables
+        assert num_iter == len(self.lut['psp'])
 
         # Debug
         if debug:
@@ -136,18 +145,6 @@ class Network(object):
 
         # === Run simulation ================================================ #
 
-        def refr(idx):
-            """Refractory kernel from idx of firing time, up to num_iter."""
-            kernel = np.zeros(num_iter)
-            ts = np.arange(1, num_iter - idx) * self.dt
-            kernel[idx+1:] += self.cell_params['kappa_0'] * \
-                np.exp(-ts / self.cell_params['tau_m'])
-            return kernel
-        # Look-up tables
-        lut_refr = refr(0)
-        lut_psp = preprocess.psp_reduce(np.arange(0, num_iter) *
-                                        self.dt, np.array([0.]),
-                                        **self.cell_params)
         # PSPs evoked by input neurons
         psps = psp_inputs
         # Hidden layer responses: l = [1, L)
@@ -166,8 +163,8 @@ class Network(object):
                     if num_spikes < len(thr_idxs):
                         fire_idx = thr_idxs[num_spikes]
                         iters = num_iter - fire_idx
-                        potentials[i, fire_idx:] += lut_refr[:iters]
-                        psps[i, fire_idx:] += lut_psp[:iters]
+                        potentials[i, fire_idx:] += self.lut['refr'][:iters]
+                        psps[i, fire_idx:] += self.lut['psp'][:iters]
                         spike_trains_l[l][i] = \
                             np.append(spike_trains_l[l][i],
                                       fire_idx * self.dt)
@@ -190,8 +187,8 @@ class Network(object):
                 if num_spikes < len(thr_idxs):
                     fire_idx = thr_idxs[num_spikes]
                     iters = num_iter - fire_idx
-                    potentials[i, fire_idx:] += lut_refr[:iters]
-                    psps[i, fire_idx:] += lut_psp[:iters]
+                    potentials[i, fire_idx:] += self.lut['refr'][:iters]
+                    psps[i, fire_idx:] += self.lut['psp'][:iters]
                     spike_trains_l[-1][i] = np.append(spike_trains_l[-1][i],
                                                       fire_idx * self.dt)
                     # Optimisation: skip output spikes after first
@@ -303,6 +300,19 @@ class Network(object):
             return spike_trains_l, rec
         else:
             return spike_trains_l
+
+    def stimulus_as_psps(self, stimulus):
+        """
+        Sets a stimulus as an array of evoked psps.
+        Stimulus: list / array -> psps: array, shape (num_nrns, num_iter).
+        """
+        if type(stimulus) is list:
+            # Presents as a list of spike trains, len (num_nrns)
+            return preprocess.pattern2psps(stimulus, self.dt, self.duration,
+                                           **self.cell_params)
+        else:
+            # Already an array of evoked psps.
+            return stimulus
 
     def times2steps(self, times):
         """

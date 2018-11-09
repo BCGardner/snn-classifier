@@ -16,7 +16,8 @@ from snncls.parameters import ParamSet
 from snncls.transform import ReceptiveFields
 
 
-def transform_data(X, y, param, receptor=None, num_classes=None):
+def transform_data(X, y, param, receptor=None, num_classes=None,
+                   return_psps=True):
     """
     Transform a data set into predetermined PSPs, spike latencies, one-hot
     encoded class labels.
@@ -24,22 +25,24 @@ def transform_data(X, y, param, receptor=None, num_classes=None):
     Inputs
     ------
     X : array, shape (num_samples, features)
-        Unprocessed input data.
+        Input data.
     y : array, shape (num_samples,)
-        Unprocessed labels.
+        Class labels.
     param : object
         Top level parameter container, using pattern and cell.
     receptor : object, optional
         Model for transforming real-valued features into spike latencies.
     num_classes : int, optional
         Set one-hot encoded labels to this number of classes.
+    predet_psps : bool
+        Predetermine PSP's evoked by input neurons for optimisation.
 
     Output
     ------
     data : list
-        Processed data as list of 2-tuples, [(X1, y1), (X2, y2), ...].
-        Each X is itself a 2-tuple, containing (psps, spike_trains). y's are
-        one-hot encoded.
+        Processed data as list of 2-tuples, [(X_0, y_0), ...].
+        Each X consists of either predetermined PSP's evoked by input LIF
+        neurons, or an input spike pattern, and y's are one-hot encoded labels.
     """
     if receptor is None:
         # Prepare feature preprocessor fitted to this specific data
@@ -49,24 +52,30 @@ def transform_data(X, y, param, receptor=None, num_classes=None):
     # Transform data
     latencies = receptor.transform(X)
     y_enc = onehot_encode(y, num_classes=num_classes)
-    # Predetermine PSPs, return as list of 2-tuples containing (psps, spikes)
-    inputs_tr = latencies_psps(latencies, param.dt,
-                               param.pattern['duration'],
-                               return_trains=True, **param.cell)
-    return zip(inputs_tr, y_enc)
+    # Input representation
+    if return_psps:
+        input_data = latencies2psps(latencies, param.dt,
+                                    param.pattern['duration'],
+                                    return_trains=True, **param.cell)
+    else:
+        input_data = latencies2patterns(latencies)
+    return zip(input_data, y_enc)
 
 
-def transform_spikes(X, y, param, receptor=None, num_classes=None):
+def transform_spikes(X, y, param, receptor=None,
+                     num_classes=None, return_psps=True):
     """
     Transform a data set into predetermined PSPs, spike trains, one-hot
     encoded class labels.
+
+    TODO: Transform input patterns into latencies using integrating receptors.
 
     Inputs
     ------
     X : list, len (num_samples)
         Input data, represented as set of spike patterns.
     y : array, shape (num_samples,)
-        Unprocessed labels.
+        Class labels.
     param : object
         Top level parameter container, using pattern and cell.
     receptor : object, optional
@@ -74,24 +83,27 @@ def transform_spikes(X, y, param, receptor=None, num_classes=None):
         as spike latencies.
     num_classes : int, optional
         Set one-hot encoded labels to this number of classes.
+    predet_psps : bool
+        Predetermine PSP's evoked by input neurons for optimisation.
 
     Output
     ------
     data : list
-        Processed data as list of 2-tuples, [(X1, y1), (X2, y2), ...].
-        Each X is itself a 2-tuple, containing (psps, spike_trains). y's are
-        one-hot encoded.
+        Processed data as list of 2-tuples, [(X_0, y_0), ...].
+        Each X consists of either predetermined PSP's evoked by input LIF
+        neurons, or an input spike pattern, and y's are one-hot encoded labels.
     """
     y_enc = onehot_encode(y, num_classes=num_classes)
     if receptor is None:
-        # Predetermine PSPs, return as list of 2-tuples
-        # containing [(psps_0, pattern_0), ...]
-        inputs = [None] * len(X)
-        for idx, pattern in enumerate(X):
-            psps = pattern2psps(pattern, param.dt, param.pattern['duration'],
-                                **param.cell)
-            inputs[idx] = (psps, pattern)
-        return zip(inputs, y_enc)
+        if return_psps:
+            inputs = [None] * len(X)
+            for idx, pattern in enumerate(X):
+                psps = pattern2psps(pattern, param.dt,
+                                    param.pattern['duration'], **param.cell)
+                inputs[idx] = psps
+            return zip(inputs, y_enc)
+        else:
+            return zip(X, y_enc)
     else:
         pass
 
@@ -135,34 +147,26 @@ def pattern2psps(pattern, dt, duration, **kwargs):
     return psps
 
 
-def latencies_psps(spikes, dt, duration, return_trains=False, **kwargs):
+def latencies2psps(spikes, dt, duration, **kwargs):
     """
     Transform a set of spike latencies into their evoked PSPs, for a given
-    duration and time step. Optionally also return associated spike trains.
+    duration and time step.
 
     Inputs
     ------
     spikes : array, shape (num_samples, num_enc_nrns)
         Set of spike latencies, one spike contributed per encoding neuron.
-    return_trains: bool, optional
-        Return list of 2-tuples, containing (psps, spike_trains) per sample.
 
     Output
     ------
     psps : list, len (num_samples)
         Set of predetermined PSPs evoked by encoding neurons, each with shape
-        (num_enc_nrns, num_iter)
-    psps, spike_trains : list, len (num_samples)
-        List of 2-tuples [(psps_0, spike_trains_0), ...].
+        (num_enc_nrns, num_iter).
     """
     times = np.arange(0., duration, dt)
     # Determine evoked PSPs, each sample has shape (num_nrns, num_iter)
     psps = [psp(times, s, **kwargs).T for s in spikes]
-    if return_trains:
-        patterns = latencies2patterns(spikes)
-        return zip(psps, patterns)
-    else:
-        return psps
+    return psps
 
 
 def latencies2patterns(latencies):
@@ -221,6 +225,29 @@ def psp_reduce(times, spikes, **kwargs):
     Returns evoked PSPs with shape (times,).
     """
     return np.sum(psp(times, spikes, **kwargs), 1)
+
+
+def refr(times, spikes, **kwargs):
+    """
+    Refractory kernel at each t in times in response to array of spikes.
+    Returns response array, shape (num_times, num_spikes).
+    """
+    params = ParamSet({'kappa_0': -15.,
+                       'tau_m': 10.})
+    params.overwrite(**kwargs)
+    s = times[:, np.newaxis] - spikes[np.newaxis, :]
+    u = s > 0.
+    values = np.zeros(s.shape)
+    values[u] = params['kappa_0'] * np.exp(-s[u] / params['tau_m'])
+    return values
+
+
+def refr_reduce(times, spikes, **kwargs):
+    """
+    Refractory effects at each t in times, summed w.r.t. array of spikes.
+    Returns total refractoriness as array, shape (times,).
+    """
+    return np.sum(refr(times, spikes, **kwargs), 1)
 
 
 def gaussian(x, mu, sigma):
