@@ -16,6 +16,16 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import ticker
 
+# Use common plotting scheme
+import matplotlib as mpl
+from cycler import cycler
+# Line colours
+mpl.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+# Grid
+mpl.rcParams['grid.color'] = 'k'
+mpl.rcParams['grid.linestyle'] = ':'
+mpl.rcParams['grid.linewidth'] = 0.5
+
 # Default pattern duration
 dt = 0.1
 duration = 40.
@@ -27,28 +37,36 @@ fig_width = 5.5
 
 
 def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
-                 fname=None):
+                 normed=False, fname=None):
     """
     Plot output and hidden weight distributions, side by side.
     """
     figsize = (fig_width, fig_width / 1.5)
     f, axarr = plt.subplots(2, figsize=figsize, sharex=True)
     # Plot hidden weights
-    axarr[0].hist(w_h.ravel(), bins)
-    y_max = axarr[0].get_ybound()[-1]
+    axarr[0].hist(w_h.ravel(), bins, normed=normed)
+    y_max = np.ceil(axarr[0].get_ybound()[-1])
     dy = y_max / num_yticks
-    axarr[0].set_yticks(np.arange(0, y_max + 1, dy))
-    axarr[0].set_ylabel('Count')
+    axarr[0].set_ylim([0., y_max])
+    axarr[0].set_yticks(np.arange(0, y_max + dy, dy))
+    if normed:
+        axarr[0].set_ylabel(r'$f(w)$')
+    else:
+        axarr[0].set_ylabel('Count')
     axarr[0].text(0.9, 0.9, 'Hidden', transform=axarr[0].transAxes,
                   fontsize=14, verticalalignment='top',
                   horizontalalignment='right', bbox=props)
     # Plot output weights
-    axarr[1].hist(w_o.ravel(), bins)
-    y_max = axarr[1].get_ybound()[-1]
+    axarr[1].hist(w_o.ravel(), bins, normed=normed)
+    y_max = np.ceil(axarr[1].get_ybound()[-1])
     dy = y_max / num_yticks
-    axarr[1].set_yticks(np.arange(0, y_max + 1, dy))
+    axarr[1].set_ylim([0., y_max])
+    axarr[1].set_yticks(np.arange(0, y_max + dy, dy))
     axarr[1].set_xlabel('Weight')
-    axarr[1].set_ylabel('Count')
+    if normed:
+        axarr[1].set_ylabel(r'$f(w)$')
+    else:
+        axarr[1].set_ylabel('Count')
     axarr[1].text(0.9, 0.9, 'Output', transform=axarr[1].transAxes,
                   fontsize=14, verticalalignment='top',
                   horizontalalignment='right', bbox=props)
@@ -61,6 +79,7 @@ def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
     """
     Plot square confusion matrix of size <true classes> by <predicted classes>,
     assuming accuracies as percentages normalised by each row.
+    Optional width: 8.
     """
     figsize = (fig_width, fig_width / 1.5)
     f, ax = plt.subplots(figsize=figsize)
