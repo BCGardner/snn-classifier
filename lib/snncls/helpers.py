@@ -11,8 +11,20 @@ Helper functions.
 import gzip
 import cPickle as pkl
 import itertools
+import os
 
 import numpy as np
+
+
+def get_basename(filename, return_ext=False):
+    """
+    Get basename of file, with or without extension.
+    """
+    basename = os.path.basename(filename)
+    if return_ext:
+        return basename
+    else:
+        return basename.split('.')[0]
 
 
 def save_data(data, filename):
