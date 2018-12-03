@@ -77,7 +77,7 @@ def main(opt):
     #playbk.play(rec, img_scan, opt.prompt)
     playbk.play_nrns(rec, img_scan, opt.prompt)
 #    plt.plot(times, rec['v'][:, 2])
-    plt.show()
+    # plt.show()
     return rec
 
 
@@ -97,6 +97,12 @@ if __name__ == "__main__":
                         help="enable user prompts")
     parser.add_argument("-w", "--wait", type=float, default=0.05,
                         help="plot speed")
+    parser.add_argument("--fname", type=str, default=None)
     args = parser.parse_args()
 
     rec = main(args)
+
+    if args.fname is not None:
+        fig = plt.gcf()
+        fig.savefig('out/{}.pdf'.format(args.fname), bbox_inches='tight',
+                    dpi=300)
