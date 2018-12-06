@@ -6,6 +6,8 @@ Created on Jun 2017
 @author: BG
 
 Base class for network training.
+
+TODO: Set this class to contain rather than inherit a network.
 """
 
 from __future__ import division
@@ -43,8 +45,8 @@ class NetworkTraining(network.Network):
         self.eta = param.net['eta0'] / self.sizes[0]
         self.corr = LearnWindow(param)
 
-    def SGD(self, tr_data, epochs, mini_batch_size, te_data=None,
-            report=True, epochs_r=5, debug=False, early_stopping=False,
+    def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
+            report=True, epochs_r=1, debug=False, early_stopping=False,
             tol=1e-5, solver='sgd', **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
@@ -52,27 +54,27 @@ class NetworkTraining(network.Network):
 
         Inputs
         ------
-        tr_data : list
-            Training data: list of 2-tuples (X, Y), where X is input data,
-            and Y a one-hot encoded class label. X is a 2-tuple, containing
-            predetermined PSP's evoked by input layer, and the list of
-            associated input spike times of size <num_inputs>.
+        data_tr : list
+            Training data: list of 2-tuples (X, y), where X is input data,
+            and y a one-hot encoded class label. X is either a list of input
+            spike trains (spike pattern) or an array of predetermined PSPs
+            evoked by the network's input layer.
         epochs : int
             Num. training epochs (maximum with early_stopping).
         mini_batch_size : int
             Patterns per mini batch (must be factor of epochs).
-        te_data : list, optional
-            Test data: list of 2-tuples (X, Y).
+        data_te : list, optional
+            Test data: list of 2-tuples (X, y), same format as data_tr.
         report : bool
             Print loss every epochs_r.
         epochs_r : int
             Num. epochs per report.
         debug : bool
             Additional readings: weights.
-        early_stopping : bool, requires te_data
-            Early stopping, if te_data used.
-        tol : float, requires early_stopping and te_data
-            Tolerance for optimisation. If loss on te_data is not improving by
+        early_stopping : bool, requires data_te
+            Early stopping, if data_te used.
+        tol : float, requires early_stopping and data_te
+            Tolerance for optimisation. If loss on data_te is not improving by
             at least tol (relative amount, proportional to initial te_loss)
             for two consecutive epochs, then convergence is considered and
             learning stops.
@@ -93,9 +95,9 @@ class NetworkTraining(network.Network):
         # === Inititalise =================================================== #
 
         # Prepare data
-        tr_data = list(tr_data)  # Copy list of data samples
-        tr_cases = len(tr_data)
-        # Solver
+        data_tr = list(data_tr)  # Copy list of data samples
+        tr_cases = len(data_tr)
+        # Learning rate schedule
         assert solver in ['sgd', 'rmsprop', 'adam']
         svr_prms = ParamSet({})
         if solver == 'rmsprop':
@@ -126,11 +128,11 @@ class NetworkTraining(network.Network):
 #            if solver == 'rmsprop':
 #                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
 #                              for w in self.w]
-        if te_data is not None:
+        if data_te is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
             # Initial test loss for early stopping
             if early_stopping:
-                te_loss0 = self.loss(te_data)
+                te_loss0 = self.loss(data_te)
 #                print "Test loss\t\t{0:.3f}".format(te_loss0)
 
         # === Training ====================================================== #
@@ -138,15 +140,15 @@ class NetworkTraining(network.Network):
         # Warm start for rmsprop
         if solver == 'rmsprop' and svr_prms['warmstart']:
             # Ensure stratified samples
-            self.rng.shuffle(tr_data)
-            mini_batch = tr_data[:mini_batch_size]
+            self.rng.shuffle(data_tr)
+            mini_batch = data_tr[:mini_batch_size]
             # Estimate initial squared gradients
             grad_w_acc = self.grad_accum(mini_batch)
             svr_prms['grad_w_av_sq'] = [dC**2 for dC in grad_w_acc]
         for j in xrange(epochs):
             # Partition data into mini batches
-            self.rng.shuffle(tr_data)
-            mini_batches = [tr_data[k:k+mini_batch_size]
+            self.rng.shuffle(data_tr)
+            mini_batches = [data_tr[k:k+mini_batch_size]
                             for k in xrange(0, tr_cases, mini_batch_size)]
             for idx, mini_batch in enumerate(mini_batches):
                 iters = idx + j * len(mini_batches)
@@ -160,9 +162,9 @@ class NetworkTraining(network.Network):
 #                    for l in xrange(self.num_layers-1):
 #                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
             # Determine loss on training / test data
-            rec['tr_loss'][j] = self.loss(tr_data)
-            if te_data is not None:
-                rec['te_loss'][j] = self.loss(te_data)
+            rec['tr_loss'][j] = self.loss(data_tr)
+            if data_te is not None:
+                rec['te_loss'][j] = self.loss(data_te)
                 # Early stopping
                 if early_stopping and j > 1:
                     te_losses = rec['te_loss'][j-2:j+1]
@@ -173,12 +175,12 @@ class NetworkTraining(network.Network):
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
-                print "Epochs: {0}\t\t{1:.3f}".format(j + 1, rec['tr_loss'][j])
+                print "Epoch: {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
 #                print "Epoch {0}:\ttrain:\t{1:.3f}".format(
-#                        j + 1, self.evaluate(tr_data))
-#                if te_data is not None:
+#                        j + 1, self.evaluate(data_tr))
+#                if data_te is not None:
 #                    print "\t\ttest:\t{0} / {1}".format(
-#                        self.evaluate(te_data), te_cases)
+#                        self.evaluate(data_te), te_cases)
         return rec
 
     def update_mini_batch(self, mini_batch, solver='sgd', svr_prms={},
@@ -189,9 +191,8 @@ class NetworkTraining(network.Network):
         Inputs
         ------
         mini_batch : list
-            Training data - list of 2-tuples (X, y). Each X is a 2-tuple
-            containing predetermined PSPs and their associated input spike
-            times. Each y is a one-hot encoded class label.
+            Training data: list of 2-tuples (X, y), where X is input data,
+            and y a one-hot encoded class label.
         solver : str, optional
             Choices: 'sgd' (default), 'rmsprop', 'adam'.
         svr_prms : dict, optional
@@ -239,7 +240,7 @@ class NetworkTraining(network.Network):
                           zip(grad_w_acc, grad_w)]
         return grad_w_acc
 
-    def backprop(self, tr_input, tr_target):
+    def backprop(self, X, y):
         raise NotImplementedError
 
     def evaluate(self, data):
@@ -250,13 +251,13 @@ class NetworkTraining(network.Network):
         correct = 0.0
         num_cases = len(data)
         for d_case in data:
-            (x, _), y = d_case
-            p = self.predict(x)
+            X, y = d_case
+            p = self.predict(X)
             if p == np.argmax(y):
                 correct += 1.0
         return (1.0 - correct / num_cases) * 100.0
 
-    def predict(self, psp_inputs):
+    def predict(self, X):
         raise NotImplementedError
 
     def loss(self, data):

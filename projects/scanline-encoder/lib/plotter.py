@@ -121,6 +121,8 @@ class Playback(object):
         # Spike raster
         axes[1].set_xlim([0., self.duration])
         axes[1].set_ylim([0, num_scanners])
+        axes[1].set_xlabel('Time (ms)')
+        axes[1].set_ylabel('Encoder')
         asp = np.diff(axes[1].get_xlim())[0] / np.diff(axes[1].get_ylim())[0]
         axes[1].set_aspect(asp)  # Set aspect to match image
         l_spikes = []  # Handle on spike vlines

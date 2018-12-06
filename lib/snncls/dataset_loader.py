@@ -16,12 +16,12 @@ import snncls.preprocess as pp
 import snncls.helpers as hp
 
 
-def load_data_spiking(data_id, param, transform=pp.transform_data):
+def load_data_transform(data_id, param, transform=pp.transform_data,
+                        return_psps=True):
     """
-    Loads a dataset in form of 2-tuple: (X, y), preprocesses features, changes
-    format of data, and returns predetermined PSPs evoked due to input layer,
-    assuming current-based LIF-type neurons in the network. Also returns list
-    of input spike times.
+    Loads a dataset in form of 2-tuple: (X, y), and transforms features into
+    a form suitable for SNN training. Returns predetermined PSPs evoked due to
+    input layer, assuming current-based LIF-type neurons in the network.
 
     Inputs
     ------
@@ -29,19 +29,23 @@ def load_data_spiking(data_id, param, transform=pp.transform_data):
         Name of dataset.
     param : container
         Using dt and paramsets: pattern, cell.
+    transform : function
+        Transformation method to convert features into spike-based
+        representation.
+    return_psps : bool
+        Predetermine PSP's evoked by input neurons for optimisation.
 
     Outputs
     -------
     return : list
-        List of 2-tuples [(X1, Y1), ...]. X's are 2-tuples containing
-        evoked PSPs due to input layer, and list of associated spike times.
-        Y's are one-hot encoded class labels. X[0] has shape
-        (num_inputs, num_iter), X[1] (num_inputs,), and Y (num_classes,).
+        List of 2-tuples [(X_0, y_0), ...]. X's contain evoked PSPs due to
+        input layer. y's are one-hot encoded class labels. X has shape
+        (num_inputs, num_iter), and y (num_classes,).
     """
     # Load dataset
     X, y = load_data_file(data_id)
     # Preprocess data
-    data_set = transform(X, y, param)
+    data_set = transform(X, y, param, return_psps=return_psps)
     return data_set
 
 

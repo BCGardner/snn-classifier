@@ -51,14 +51,14 @@ def distance_spatio(spike_trains, spike_trains_ref, dist_metric=van_rossum):
 def confusion_matrix(net, data, raw=True):
     """
     Measure confusion matrix of a network on provided data.
-    Data is a list of 2-tuples [(X1, y1), (X2, y2), ...], where each X is also
-    a 2-tuple containing (psps_in, spikes_in). Raw returns counts per matrix
+    Data is a list of 2-tuples [(X0, y0), ...], where X contains network
+    stimulus and y is the target output vector. Raw returns counts per matrix
     element. Final column is the null class, containing counts for no spike.
     """
     num_classes = len(data[0][1])
     # Confusion matrix: <true classes> by <predicted classes>
     conf_mat = np.zeros((num_classes, num_classes + 1))
-    for (X, _), y in data:
+    for X, y in data:
         label = np.argmax(y)  # True class label
         predict = net.predict(X)  # Predicted class label
         # Given a prediction by the network
@@ -79,8 +79,8 @@ def rates_av(net, data):
     """
     num_samples = len(data)
     rates = np.zeros((net.num_layers - 1))
-    for sample in data:
-        spike_trains_l = net.simulate(sample[0][0])
+    for X, _ in data:
+        spike_trains_l = net.simulate(X)
         for idx, spike_trains in enumerate(spike_trains_l):
             for spikes in spike_trains:
                 rates[idx] += len(spikes)
