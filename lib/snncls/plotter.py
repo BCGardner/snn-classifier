@@ -20,7 +20,9 @@ from matplotlib import ticker
 import matplotlib as mpl
 from cycler import cycler
 # Line colours
-mpl.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+# mpl.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+mpl.rcParams['axes.prop_cycle'] = \
+    cycler('color', ['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 # Grid
 mpl.rcParams['grid.color'] = 'k'
 mpl.rcParams['grid.linestyle'] = ':'
