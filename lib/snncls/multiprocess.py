@@ -11,12 +11,13 @@ Multiprocessing routines.
 import multiprocessing as mp
 import time
 import itertools
+import copy
 
 import numpy as np
 
 
-def param_sweep(worker_func, prm_vals, prm_labels, args_com, num_runs=1,
-                report=True):
+def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
+                num_runs=1, report=True):
     """
     Maps a pool of workers to the provided function, sweeping over a list
     of parameter sets as an argument. The grid of parameter coords are run
@@ -33,6 +34,8 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, num_runs=1,
                  Contains labels of parameters sweeped over.
     args_com : dict
                Common arguments assigned to the worker func on each run.
+    seed : int, optional
+           Reference seed value for reproducable results.
     num_runs : int, optional
                Number of repeated runs per grid coord.
     report : bool, optional
@@ -54,13 +57,25 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, num_runs=1,
         print 'Num workers: {}'.format(pool._processes)
         t_start = time.time()
 
+    # Initialise seeds
+    dims = grid_shape + (num_runs,)
+    if seed is not None:
+        seeds = (np.arange(np.prod(dims)) + seed).reshape(dims)
+    else:
+        seeds = np.full(dims, None)
+
     # Assign tasks
     results = np.empty(grid_shape, dtype=object)
     for coord in itertools.product(*grid_ranges):
         arg_dict = dict(args_com)
+        # Set shared parameter values over repeated runs
         for idx, label in enumerate(prm_labels):
             arg_dict[label] = prm_vals[idx][coord[idx]]
-        arg_set = list(itertools.repeat(arg_dict, num_runs))
+        arg_set = [copy.deepcopy(arg_dict) for i in xrange(num_runs)]
+        # Set (unique) seeds
+        for d, s in zip(arg_set, seeds[coord]):
+            d['seed'] = s
+        # Assign parallel jobs
         results[coord] = pool.map_async(worker_func, arg_set)
         if report:
             print('{}: {}'.format(coord,
