@@ -91,7 +91,7 @@ def confusion_matrix(mat, fig_width=fig_width, fontsize=None, fname=None,
     cb = f.colorbar(im, ticks=np.arange(0, 120, dtick))
     cb.ax.tick_params(labelsize=fontsize)
     # Add values
-    thresh = mat.max() / 2.
+    thresh = 100. / 2.
     for i, j in itertools.product(range(mat.shape[0]), range(mat.shape[1])):
         if mat[i, j] <= skip_lteq:
             continue
