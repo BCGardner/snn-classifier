@@ -38,6 +38,66 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 fig_width = 5.5
 
 
+def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
+                  num_ticks=None, fig_width=fig_width, fontsize=None,
+                  fname=None):
+    """
+    Plot large array of weights, gathered over multiple runs, as 2d hist per
+    epoch.
+
+    Inputs
+    ------
+    weights : array, shape (num_runs, num_epochs, num_post, num_pre)
+        Weights of a layer.
+    w_lims : tuple, len (2)
+        Lower and upper weight bounds: (w_min, w_max)
+    bins : int
+        Number of intervals the weights are counted over.
+    thr_max : int, optional
+        Threshold for maximum count.
+    normed : bool, optional
+        Normalise the 2D histrogram.
+    num_ticks : int, optional
+        Number of ticks on colorbar (excluding thr_max).
+    """
+    figsize = (fig_width, fig_width / 1.5)
+    f, ax = plt.subplots(figsize=figsize)
+    # Reshape: (num_runs, num_epochs, num_connections)
+    ws = np.reshape(weights, np.shape(weights)[:2] + (-1,))
+    num_epochs = ws.shape[1]
+    # Reshape: (num_epochs, pooled_connections)
+    ws = ws.swapaxes(0, 1).reshape((num_epochs, -1))
+    num_conn = ws.shape[1]
+    # Assign epoch indices, flatten points
+    epoch_idxs = np.concatenate([np.full(num_conn, idx) for idx in
+                                 xrange(num_epochs)])
+    ws = ws.ravel()
+    # Define bin edges
+    w_edges = np.linspace(*w_lims, num=bins)
+    idx_edges = np.linspace(0, num_epochs, num=num_epochs+1)
+    # Plot 2D histogram of weights
+    im = ax.hist2d(ws, epoch_idxs, bins=(w_edges, idx_edges), vmax=thr_max,
+                   normed=normed, cmap='Blues')[-1]
+    # Colorbar
+    if thr_max is not None:
+        if num_ticks is not None:
+            ticks = np.linspace(0, thr_max, num_ticks + 1)
+        else:
+            ticks = None
+        cb = f.colorbar(im, ticks=ticks, extend='max')
+        cb.cmap.set_over('black')
+    else:
+        cb = f.colorbar(im)
+    cb.set_label('Count')
+    plt.xlabel('Weight')
+    plt.ylabel('Epochs')
+    # Set custom font sizes
+    if fontsize is not None:
+        set_fontsize(ax, fontsize)
+    # Save
+    print_plot(f, fname)
+
+
 def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
                  normed=False, fname=None):
     """
@@ -208,9 +268,9 @@ def weight_heatmaps(weights, figsize=(8.0, 6.0), fname=None):
 
     Inputs
     ------
-    weights: list
-        List of numpy arrays by layer, each of size:
-            <# epochs> by <# post> by <# pre>.
+    weights: list, len (num_layers)
+        List of numpy arrays by layer, each with shape
+        (num_epochs, num_post, num_pre).
     """
     # Params
     num_outputs = weights[-1].shape[1]
