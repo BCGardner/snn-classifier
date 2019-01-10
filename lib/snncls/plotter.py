@@ -38,9 +38,49 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 fig_width = 5.5
 
 
+def data_violin(arr, xlim=None, ylim=None, dy=None, xlabel=None, ylabel=None,
+                fig_width=fig_width, fontsize=None, fname=None):
+    """
+    Violin plots for each column of a data array. Array may be 1D or 2D.
+
+    Inputs
+    ------
+    arr : array, shape (num_samples[, num_cols])
+        Array values.
+    lim : tuple, len (2)
+        Lower and upper plotted values: (v_min, v_max)
+    """
+    figsize = (fig_width, fig_width / 1.5)
+    f, ax = plt.subplots(figsize=figsize)
+    # Plot
+    parts = ax.violinplot(arr)
+    for pc in parts['bodies']:
+        pc.set_facecolor('blue')
+    parts['cbars'].set_color('black')
+    parts['cmaxes'].set_color('black')
+    parts['cmins'].set_color('black')
+    # Limits and ticks
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    if dy is not None:
+        lims = ax.get_ylim()
+        ticks = np.arange(lims[0], lims[1] + dy, dy)
+        ax.set_yticks(ticks)
+    # Labels
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    # Set custom font sizes
+    if fontsize is not None:
+        set_fontsize(ax, fontsize)
+    # Save
+    print_plot(f, fname)
+
+
 def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
-                  num_ticks=None, fig_width=fig_width, fontsize=None,
-                  fname=None):
+                  num_ticks=None, dx=None, debug=False, fig_width=fig_width,
+                  fontsize=None, fname=None):
     """
     Plot large array of weights, gathered over multiple runs, as 2d hist per
     epoch.
@@ -76,8 +116,9 @@ def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
     w_edges = np.linspace(*w_lims, num=bins)
     idx_edges = np.linspace(0, num_epochs, num=num_epochs+1)
     # Plot 2D histogram of weights
-    im = ax.hist2d(ws, epoch_idxs, bins=(w_edges, idx_edges), vmax=thr_max,
-                   normed=normed, cmap='Blues')[-1]
+    counts, xedges, yedges, im = \
+        ax.hist2d(ws, epoch_idxs, bins=(w_edges, idx_edges), vmax=thr_max,
+                  normed=normed, cmap='Blues')
     # Colorbar
     if thr_max is not None:
         if num_ticks is not None:
@@ -89,13 +130,20 @@ def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
     else:
         cb = f.colorbar(im)
     cb.set_label('Count')
-    plt.xlabel('Weight')
-    plt.ylabel('Epochs')
+    # Ticks and labels
+    if dx is not None:
+        xticks = np.arange(w_lims[0], w_lims[1] + dx, dx)
+        ax.set_xticks(xticks)
+    ax.set_xlabel('Weight')
+    ax.set_ylabel('Epochs')
     # Set custom font sizes
     if fontsize is not None:
         set_fontsize(ax, fontsize)
     # Save
     print_plot(f, fname)
+    # Debug
+    if debug:
+        return counts, xedges, yedges
 
 
 def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
