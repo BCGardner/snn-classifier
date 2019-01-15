@@ -12,6 +12,7 @@ import multiprocessing as mp
 import time
 import itertools
 import copy
+import psutil
 
 import numpy as np
 
@@ -52,7 +53,8 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
     grid_ranges = [xrange(i) for i in grid_shape]
 
     # Setup pool of workers
-    pool = mp.Pool(processes=None, maxtasksperchild=None)
+    num_phys_cores = psutil.cpu_count(logical=False)
+    pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
     if report:
         print 'Num workers: {}'.format(pool._processes)
         t_start = time.time()
