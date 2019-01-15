@@ -18,7 +18,7 @@ import numpy as np
 
 
 def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
-                num_runs=1, report=True):
+                num_runs=1, report=True, num_proc=None):
     """
     Maps a pool of workers to the provided function, sweeping over a list
     of parameter sets as an argument. The grid of parameter coords are run
@@ -41,6 +41,8 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
                Number of repeated runs per grid coord.
     report : bool, optional
              Report status and runtime.
+    num_proc : int, optional
+               Maximum number of processes to run concurrently.
 
     Output
     ------
@@ -53,8 +55,11 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
     grid_ranges = [xrange(i) for i in grid_shape]
 
     # Setup pool of workers
-    num_phys_cores = psutil.cpu_count(logical=False)
-    pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
+    if num_proc is not None:
+        pool = mp.Pool(processes=num_proc, maxtasksperchild=None)
+    else:
+        num_phys_cores = psutil.cpu_count(logical=False)
+        pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
     if report:
         print 'Num workers: {}'.format(pool._processes)
         t_start = time.time()
