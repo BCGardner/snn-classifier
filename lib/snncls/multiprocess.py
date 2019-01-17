@@ -17,6 +17,70 @@ import psutil
 import numpy as np
 
 
+def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
+             num_runs=1, report=True, num_proc=None):
+    """
+    Maps a pool of workers to worker_func, using one list of arguments.
+    """
+    # Task parameters
+    grid_shape = tuple([len(i) for i in prm_vals])
+    num_args = np.prod(grid_shape + (num_runs,))
+
+    # Setup pool of workers
+    if num_proc is not None:
+        pool = mp.Pool(processes=num_proc, maxtasksperchild=None)
+    else:
+        num_phys_cores = psutil.cpu_count(logical=False)
+        pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
+    if report:
+        print 'Num workers: {}'.format(pool._processes)
+        t_start = time.time()
+
+    # Initialise seeds
+    if seed is not None:
+        seeds = range(seed, num_args + seed)
+    else:
+        seeds = list(itertools.repeat(None, num_args))
+
+    # Create arguments list, len (num_prms0 x num_prms1 x ... x num_runs)
+    args = []
+    for idx, vals in enumerate(itertools.product(*prm_vals)):
+        arg_dict = dict(args_com)
+        for k, v in zip(prm_labels, vals):
+            arg_dict[k] = v
+        # Repeated runs per parameter point
+        arg_dicts = [copy.deepcopy(arg_dict) for i in xrange(num_runs)]
+        # Assign (unique) seeds
+        offset = idx * num_runs
+        for d, s in zip(arg_dicts, seeds[offset:offset+num_runs]):
+            d['seed'] = s
+        # Assign repeated args
+        args += arg_dicts
+        if report:
+            coord = np.unravel_index(idx, grid_shape)
+            print('{}: {}'.format(coord,
+                                  [arg_dict[label] for label in prm_labels]))
+
+    # Assign parallel jobs
+    results = pool.map(worker_func, args)
+
+    # Cleanup
+    pool.close()
+    pool.join()
+    if report:
+        t_elapsed = time.time() - t_start
+        print '{:.2f} s'.format(t_elapsed)
+
+    # Gather results as array of lists
+    results = \
+        [results[i:i+num_runs] for i in xrange(0, len(results), num_runs)]
+    results_gtr = np.empty(grid_shape, dtype=object)
+    for idx, result in enumerate(results):
+        coord = np.unravel_index(idx, grid_shape)
+        results_gtr[coord] = result
+    return results_gtr
+
+
 def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
                 num_runs=1, report=True, num_proc=None):
     """
