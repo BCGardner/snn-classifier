@@ -87,7 +87,7 @@ def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
 
     Inputs
     ------
-    weights : array, shape (num_runs, num_epochs, num_post, num_pre)
+    weights : array, shape ([num_runs], num_epochs, num_post, num_pre)
         Weights of a layer.
     w_lims : tuple, len (2)
         Lower and upper weight bounds: (w_min, w_max)
@@ -102,11 +102,13 @@ def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
     """
     figsize = (fig_width, fig_width / 1.5)
     f, ax = plt.subplots(figsize=figsize)
-    # Reshape: (num_runs, num_epochs, num_connections)
-    ws = np.reshape(weights, np.shape(weights)[:2] + (-1,))
-    num_epochs = ws.shape[1]
-    # Reshape: (num_epochs, pooled_connections)
-    ws = ws.swapaxes(0, 1).reshape((num_epochs, -1))
+    # Cast weights array to shape (num_epochs, pooled_connections)
+    if np.ndim(weights) == 4:
+        weights = weights.swapaxes(0, 1)
+    elif np.ndim(weights) != 3:
+        raise ValueError
+    num_epochs = len(weights)
+    ws = weights.reshape((num_epochs, -1))
     num_conn = ws.shape[1]
     # Assign epoch indices, flatten points
     epoch_idxs = np.concatenate([np.full(num_conn, idx) for idx in
