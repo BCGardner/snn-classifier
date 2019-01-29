@@ -42,6 +42,7 @@ class SimParam(object):
                              'w_bounds': (-15., 15.),  # Weight bounds
                              'l2_pen': 2E-3,        # L2 weight penalty term
                              'rate_pen': None,      # Rate penalty
+                             'rate_pow': 0,         # Spike count exponent
                              'syn_scale': 0.1})     # Synaptic scaling
         # Patterns
         self.pattern = ParamSet({'neurons_f': 12,   # num. encoding nrns
