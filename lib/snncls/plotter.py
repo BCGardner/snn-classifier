@@ -38,6 +38,67 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 fig_width = 5.5
 
 
+def heatmap_prms(mat, prms0, prms1, labels=None, vmin=None, vmax=None,
+                 num_ticks=None, fig_width=fig_width, fontsize=None,
+                 fname=None):
+    """
+    Plot heatmap of 2D array of values, w.r.t. parameter values.
+
+    Inputs
+    ------
+    mat : array, shape (num_prms0, num_prms1)
+        Matrix of final accuracies at each prm coord.
+    prms0 : list, len (num_prms0)
+        Parameter values corresponding to axis 0 (y-axis).
+    prms1 : list, len (num_prms1)
+        Parameter values corresponding to axis 1 (x-axis).
+    labels : list, len (num_dims)
+        Parameter labels: [prms0, prms1].
+    """
+    figsize = (fig_width, fig_width / 1.5)
+    f, ax = plt.subplots(figsize=figsize)
+    # Plot
+    im = ax.imshow(mat, cmap='Blues', interpolation='none',
+                   vmin=vmin, vmax=vmax)
+    # Colorbar
+#    if vmin is not None:
+#        cb = f.colorbar(im, extend='max')
+#    cb.cmap.set_over('white')
+#    else:
+    cb = f.colorbar(im)
+    if num_ticks is not None:
+        ticks = cb.get_ticks()
+        ticks = np.linspace(ticks[0], ticks[-1], num_ticks)
+        cb.set_ticks(ticks)
+    cb.ax.tick_params(labelsize=fontsize)
+    # Add values
+    thresh = np.mean(cb.get_ticks()[[0, -1]])
+    for coord, v in np.ndenumerate(mat):
+        i, j = coord
+        ax.text(j, i, format(mat[i, j], '.0f'),
+                horizontalalignment="center",
+                color="white" if mat[i, j] > thresh else "black",
+                fontsize=fontsize)
+    # Set labels on x-axis (prms1)
+    ax.set_xticks(np.arange(len(prms1)))
+    ax.set_xticklabels(prms1)
+    ax.set_xlim(np.array([0, len(prms1)]) - 0.5)
+    # Set labels on y-axis (prms0)
+    ax.set_yticks(np.arange(len(prms0)))
+    ax.set_yticklabels(prms0)
+    ax.set_ylim(np.array([0, len(prms0)]) - 0.5)
+    if labels is not None:
+        plt.xlabel(labels[1])
+        plt.ylabel(labels[0])
+    # Reverse x ticks
+#    ax.xaxis.tick_top()
+    # Set custom font sizes
+    if fontsize is not None:
+        set_fontsize(ax, fontsize)
+    # Save
+    print_plot(f, fname)
+
+
 def data_violin(arr, xlim=None, ylim=None, dy=None, xlabel=None, ylabel=None,
                 fig_width=fig_width, fontsize=None, fname=None):
     """
