@@ -210,7 +210,7 @@ def weight_hist2d(weights, w_lims, bins=20, thr_max=None, normed=False,
 
 
 def weight_distr(w_h, w_o, fig_width=fig_width, bins=80, num_yticks=4,
-                 normed=False, fname=None):
+                 y_max=None, normed=False, fname=None):
     """
     Plot output and hidden weight distributions, side by side.
     """
