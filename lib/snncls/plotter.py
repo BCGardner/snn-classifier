@@ -24,14 +24,11 @@ from cycler import cycler
 # Line colours
 # mpl.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
 mpl.rcParams['axes.prop_cycle'] = \
-    cycler('color', ['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+    cycler('color', ['k', 'g', 'r', 'c', 'm', 'y', 'k'])
 # Grid
 mpl.rcParams['grid.color'] = 'k'
 mpl.rcParams['grid.linestyle'] = ':'
 mpl.rcParams['grid.linewidth'] = 0.5
-
-# Text
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
 
 class Plotter(object):
@@ -42,6 +39,7 @@ class Plotter(object):
         """
         Overwrite common, default plotting parameters.
         """
+        self.props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         self.prms = ParamSet({'dt': 0.1,
                               'duration': 40.,
                               'figwidth': 5.5,
@@ -61,40 +59,13 @@ class Plotter(object):
         Default setup of figure and axes. fig_shape specifies subplot panels.
         Returns handle to figure pane and axis as 2-tuple.
         """
-        figwidth = self.prms['figwidth']
         if figsize is None:
+            figwidth = self.prms['figwidth']
             figsize = (figwidth, ratio * figwidth)
         if fig_shape is not None:
             return plt.subplots(*fig_shape, figsize=figsize, **kwargs)
         else:
             return plt.subplots(figsize=figsize, **kwargs)
-
-    def set_fontsize(self, ax):
-        fontsize = self.prms['fontsize']
-        if fontsize is not None:
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(fontsize)
-
-    def set_ticks(self, h, num_ticks=None, tick_bounds=None):
-        """
-        Set number of ticks, with equal spacing, on a given object handle.
-        """
-        if num_ticks is not None:
-            if tick_bounds is None:
-                tick_bounds = h.get_ticklocs()[[0, -1]]
-            ticks = np.linspace(*tick_bounds, num=num_ticks)
-            h.set_ticks(ticks)
-
-    def print_plot(self, fig, fname=None):
-        """
-        Print provided figure.
-        """
-        if fname is not None:
-            fig.savefig('out/{}.pdf'.format(fname), bbox_inches='tight',
-                        dpi=300)
-        else:
-            fig.show()
 
     def heatmap_prms(self, mat, prms0, prms1, labels=None, vmin=None,
                      vmax=None, num_ticks=None, figsize=None, fname=None):
@@ -144,8 +115,8 @@ class Plotter(object):
         ax.set_yticklabels(prms0)
         ax.set_ylim(np.array([0, len(prms0)]) - 0.5)
         if labels is not None:
-            plt.xlabel(labels[1])
-            plt.ylabel(labels[0])
+            ax.set_xlabel(labels[1])
+            ax.set_ylabel(labels[0])
         # Reverse x ticks
     #    ax.xaxis.tick_top()
         # Set custom font sizes
@@ -277,7 +248,7 @@ class Plotter(object):
             axarr[0].set_ylabel('Count')
         axarr[0].text(0.9, 0.9, 'Hidden', transform=axarr[0].transAxes,
                       fontsize=14, verticalalignment='top',
-                      horizontalalignment='right', bbox=props)
+                      horizontalalignment='right', bbox=self.props)
         # Plot output weights
         axarr[1].hist(w_o.ravel(), bins, normed=normed)
         y_max = np.ceil(axarr[1].get_ybound()[-1])
@@ -291,7 +262,7 @@ class Plotter(object):
             axarr[1].set_ylabel('Count')
         axarr[1].text(0.9, 0.9, 'Output', transform=axarr[1].transAxes,
                       fontsize=14, verticalalignment='top',
-                      horizontalalignment='right', bbox=props)
+                      horizontalalignment='right', bbox=self.props)
         # Save
         self.print_plot(f, fname)
 
@@ -328,8 +299,8 @@ class Plotter(object):
         ax.set_xlim(np.array([0, num_classes + 1]) - 0.5)  # Final col is null
         ax.set_yticks(np.arange(0, num_classes + 1, 1))
         ax.set_ylim(np.array([num_classes, 0]) - 0.5)
-        plt.xlabel('Predicted label')
-        plt.ylabel('True label')
+        ax.set_xlabel('Predicted label')
+        ax.set_ylabel('True label')
         # Reverse x ticks
         ax.xaxis.tick_top()
         # Set custom font sizes
@@ -346,7 +317,7 @@ class Plotter(object):
         duration = self.prms['duration']
         f, ax = self.setup_fig(figsize=figsize)
         for nrn, spikes in enumerate(spike_trains):
-            plt.vlines(spikes, nrn, nrn + .5)
+            ax.vlines(spikes, nrn, nrn + .5)
         # Limits
         ax.set_xlim([0., duration])
         ax.set_ylim([0, nrn+0.8])
@@ -360,7 +331,7 @@ class Plotter(object):
         self.print_plot(f, fname)
 
     def spike_rasters(self, spikes, voltages=None, text=None, textsize=None,
-                      linewidth=None, num_xticks=None, figsize=figsize,
+                      linewidth=None, num_xticks=None, figsize=None,
                       fname=None):
         """
         TODO: Plots input, hidden, output spike trains, optionally output
@@ -392,7 +363,7 @@ class Plotter(object):
         if text is not None:
             axarr[0].text(0.95, 0.85, text, transform=axarr[0].transAxes,
                           fontsize=textsize, verticalalignment='top',
-                          horizontalalignment='right', bbox=props)
+                          horizontalalignment='right', bbox=self.props)
     #    set_fontsize(axarr[0], fontsize)
         # Hidden spike trains
         st_panel(spikes[1], axarr[1], vline_size=1.)
@@ -419,9 +390,9 @@ class Plotter(object):
     #        axarr[3].set_ylabel("Voltage")
     #        axarr[3].legend(loc="lower right", fontsize='x-small')
         # Axis labels
-        plt.xlim([0., duration])
+        axarr[-1].set_xlim([0., duration])
 #        self.set_ticks(axrr[-2])
-        plt.xlabel('Time (ms)')
+        axarr[-1].set_xlabel('Time (ms)')
 #        plt.xticks(np.arange(0, 50, 10))
         # Set font size
         for ax in axarr:
@@ -441,53 +412,48 @@ class Plotter(object):
             (num_epochs, num_post, num_pre).
         """
         # Setup
-        num_outputs = weights[-1].shape[1]
-        num_hidden = weights[-2].shape[1]
-        fig, axs = plt.subplots(2, 1, figsize=figsize)
+#        num_outputs = weights[-1].shape[1]
+#        num_hidden = weights[-2].shape[1]
+        cmap = self.prms['cmap']
+        f, axs = self.setup_fig((2, 1), figsize=figsize)
 
-        # Change in output / hidden weights with epochs
-        dw_o = [weights[-1][:, i, :] / weights[-1][0, i, :]
-                for i in xrange(num_outputs)]
-        dw_h = [weights[-2][:, i, :] / weights[-2][0, i, :]
-                for i in xrange(num_hidden)]
+#        # Change in output / hidden weights with epochs
+#        dw_o = [weights[-1][:, i, :] / weights[-1][0, i, :]
+#                for i in xrange(num_outputs)]
+#        dw_h = [weights[-2][:, i, :] / weights[-2][0, i, :]
+#                for i in xrange(num_hidden)]
 
         # Plotting
-        def im_panel(fig, ax, arr, clim=(None, None), nbins=None,
+        def im_panel(f, ax, arr, clim=(None, None), nbins=None,
                      extend='neither'):
-            cmap = plt.cm.get_cmap('Blues')
-    #        cmap.set_over('black')
+            # cmap.set_over('black')
             im = ax.imshow(arr, cmap=cmap, interpolation=None, clim=clim)
             ax.set_aspect('equal')
             divider = make_axes_locatable(ax)
             ax_cb = divider.new_horizontal(size="5%", pad=0.2,
                                            pack_start=False)
-            fig.add_axes(ax_cb)
-            cb = fig.colorbar(im, cax=ax_cb, orientation='vertical',
-                              extend=extend)
+            f.add_axes(ax_cb)
+            cb = f.colorbar(im, cax=ax_cb, orientation='vertical',
+                            extend=extend)
             if nbins is not None:
                 tick_locator = ticker.MaxNLocator(nbins=nbins)
                 cb.locator = tick_locator
                 cb.update_ticks()
         # Plot final weight heatmaps for outputs
         ax = axs[0]
-        im_panel(fig, ax, weights[-1][-1], nbins=3)
+        im_panel(f, ax, weights[-1][-1], nbins=3)
         ax.set_xticks(np.arange(0, 20, 4))
         ax.set_yticks(np.arange(0, 3, 1))
         ax.set_xlabel("Hidden #")
         ax.set_ylabel("Output #")
         ax = axs[1]
-        im_panel(fig, ax, weights[-2][-1], clim=(None, 20), extend='max')
+        im_panel(f, ax, weights[-2][-1], clim=(None, 20), extend='max')
         ax.set_xticks(np.arange(0, 50, 10))
         ax.set_yticks(np.arange(0, 20, 4))
         ax.set_xlabel("Input #")
         ax.set_ylabel("Hidden #")
-        fig.set_tight_layout(True)
-
-        # Print data
-        if fname is not None:
-            plt.savefig('out/{}.pdf'.format(fname), dpi=300)
-        else:
-            plt.show()
+        # Save
+        self.print_plot(f, fname)
 
     def errbars(self, *losses, **kwargs):
         """
@@ -542,7 +508,7 @@ class Plotter(object):
         if args['text'] is not None:
             ax.text(0.5, 0.9, args['text'], transform=ax.transAxes,
                     fontsize=args['textsize'], verticalalignment='top',
-                    horizontalalignment='right', bbox=props)
+                    horizontalalignment='right', bbox=self.props)
         # Set custom font sizes
         self.set_fontsize(ax)
         # Save
@@ -576,3 +542,30 @@ class Plotter(object):
     #    cb = f.colorbar(heatmap, orientation='horizontal')
     #    plt.xticks(np.arange(0, 50, 10))
         self.print_plot(f, fname)
+
+    def set_fontsize(self, ax):
+        fontsize = self.prms['fontsize']
+        if fontsize is not None:
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(fontsize)
+
+    def set_ticks(self, h, num_ticks=None, tick_bounds=None):
+        """
+        Set number of ticks, with equal spacing, on a given object handle.
+        """
+        if num_ticks is not None:
+            if tick_bounds is None:
+                tick_bounds = h.get_ticklocs()[[0, -1]]
+            ticks = np.linspace(*tick_bounds, num=num_ticks)
+            h.set_ticks(ticks)
+
+    def print_plot(self, fig, fname=None):
+        """
+        Print provided figure.
+        """
+        if fname is not None:
+            fig.savefig('out/{}.pdf'.format(fname), bbox_inches='tight',
+                        dpi=300)
+        else:
+            fig.show()
