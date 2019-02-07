@@ -351,7 +351,7 @@ class Plotter(object):
 
         def st_panel(spike_trains, ax, vline_size=0.5, ymax=None):
             for nrn, spikes in enumerate(spike_trains):
-                ax.vlines(spikes, nrn, nrn + vline_size)
+                ax.vlines(spikes, nrn, nrn + vline_size, linewidth=linewidth)
             if ymax is not None:
                 ax.set_ylim([0, ymax])
 
