@@ -97,6 +97,94 @@ class BaseModel(object):
         return vars(self)
 
 
+class ConvFilter(BaseModel):
+    """
+    Considers each data sample as an array of feature-sequences, where each
+    sequences consists of real values that are typically in the range [0, 9).
+    This model transforms arrays of feature-sequences into spike latencies via
+    convolutional filtering.
+    """
+    def __init__(self, neurons_f=12, beta=1.5, curr_max=20., tau_m=10., cm=2.5,
+                 theta=15., ltcy_max=9.):
+        """
+        Sets transformation parameters.
+
+        Inputs
+        ------
+        neurons_f : int
+            Number of neurons encoding arrays of feature sequences.
+        beta : float
+            Width of each Gaussian receptive field.
+        curr_max : float
+            Maximum injected current per input.
+        tau_m : float
+            LIF membrane time constant.
+        cm : float
+            LIF membrane capacitance.
+        ltcy_max : float
+            Maximum latency.
+        """
+        super(ConvFilter, self).__init__()
+        # Receptive fields
+        self.neurons_f = neurons_f
+        self.beta = beta
+        # Encoding neurons
+        self.curr_max = curr_max
+        self.tau_m = tau_m
+        self.R = tau_m / cm  # LIF membrane resistance
+        self.theta = theta  # LIF firing threshold
+        self.ltcy_max = ltcy_max
+        # Minimum driving voltage for target output latency range
+        self.volts_min = theta / (1. - np.exp(-ltcy_max / tau_m))
+
+    def transform(self, X):
+        """
+        Transform input data X (num_samples, num_features) into input
+        activations and then spike latencies.
+        """
+        self.check_fit(X)
+        # Intensity of responses
+        m, n = X.shape
+        activations = np.zeros((m, self.neurons_f * n))
+        for idx, x in enumerate(X):
+            activations[idx, :] = \
+                np.hstack([np.sum(gaussian(seq[:, np.newaxis],
+                                           self.centers, self.sigma), 0)
+                           for seq in x])
+        activations *= self.curr_max
+        # Convert to spike latencies
+        volts = self.R * activations
+        ltcys = np.full(activations.shape, np.inf)
+        ltcy_mask = volts > self.volts_min
+        ltcys[ltcy_mask] = self.tau_m * np.log(volts[ltcy_mask] /
+                                               (volts[ltcy_mask] - self.theta))
+        return ltcys
+
+    def fit(self, X, X_min=0., X_max=9.):
+        """
+        Sets up this model for example data. Each feature is a sequence of
+        float values.
+
+        Inputs
+        ------
+        X : array, shape (num_samples, num_features)
+            Data set.
+        X_min : float
+            Minimum feature value.
+        X_max : float
+            Maximum feature value.
+        """
+        # num_samples, num_features
+        m, n = X.shape
+        # Center receptive fields
+        indices = np.arange(1, self.neurons_f+1)
+        self.centers = X_min + (2*indices - 3) / 2. * \
+            (X_max - X_min) / (self.neurons_f - 2)
+        self.sigma = 1. / self.beta * (X_max - X_min) / (self.neurons_f - 2)
+        # Update fitted parameters
+        self.update_fit(X, (X_min, X_max))
+
+
 class Integrator(BaseModel):
     """
     Converts real-valued feature vectors into spike latencies based on constant
