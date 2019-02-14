@@ -308,8 +308,8 @@ class Plotter(object):
         # Save
         self.print_plot(f, fname)
 
-    def spike_raster(self, spike_trains, num_xticks=None, figsize=None,
-                     fname=None):
+    def spike_raster(self, spike_trains, num_xticks=None, num_yticks=None,
+                     figsize=None, fname=None):
         """
         Plot a list of spike trains.
         """
@@ -323,7 +323,8 @@ class Plotter(object):
         ax.set_ylim([0, nrn+0.8])
         # Ticks
         self.set_ticks(ax.get_xaxis(), num_xticks)
-        ax.set_yticks(np.arange(nrn+1))
+        self.set_ticks(ax.get_yaxis(), num_yticks)
+#        ax.set_yticks(np.arange(nrn+1))
         # Labels
         ax.set_xlabel("Time (ms)")
         ax.set_ylabel("Neuron #")
