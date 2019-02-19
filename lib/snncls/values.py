@@ -41,7 +41,6 @@ class SimParam(object):
                              'w_o_init': (0.0, 4.0),  # Initial output weights
                              'w_bounds': (-15., 15.),  # Weight bounds
                              'l2_pen': 2E-3,        # L2 weight penalty term
-                             'rate_pen': None,      # Rate penalty
                              'rate_pow': 0,         # Spike count exponent
                              'syn_scale': 0.1})     # Synaptic scaling
         # Patterns
