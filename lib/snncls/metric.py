@@ -73,15 +73,62 @@ def confusion_matrix(net, data, raw=True):
         return conf_mat * 100. / np.sum(conf_mat, 1, keepdims=True)
 
 
-def rates_av(net, data):
+def rates_expt(net, data, weights):
     """
-    Find average firing rates of neurons in each layer.
+    Find average firing rates per layer, on each epoch of an experiment. Expt
+    may consist of several independent runs. Num_layers excludes input layer.
+
+    Inputs
+    ------
+    net : object
+        Pre-initialised network object.
+    data : list, len (num_samples)
+        Dataset samples, [(X0, y0), (X1, y1), ...], to sample rates from.
+    weights : list, len (num_layers)
+        Recorded network weights. Each list element contains an array of shape
+        ([num_runs], num_epochs, num_post, num_pre).
+
+    Output
+    ------
+    return : list, len (num_layers)
+        Average firing rates of neurons in each layer. Each list element
+        contains array of shape (num_epochs[, num_runs], num_nrns).
+    """
+    # Cast each weights elem to array with shape (num_runs, ...)
+    if np.ndim(weights[-1]) == 3:
+        weights = [ws[np.newaxis, :] for ws in weights]
+    elif np.ndim(weights[-1]) != 4:
+        raise ValueError
+    # Dims
+    num_runs, num_epochs = weights[-1].shape[:2]
+    # For each epoch: iterate through each run, sample average rate of each
+    # neuron from data, per layer
+    rates = [np.full((num_epochs, num_runs, i), np.nan)
+             for i in net.sizes[1:]]
+    for epoch in xrange(num_epochs):
+        for run in xrange(num_runs):
+            ws = [w[run, epoch] for w in weights]
+            net.reset(weights=ws)
+            rs_l = [rs.mean(0) for rs in rates_data(net, data)]
+            for idx, rs in enumerate(rs_l):
+                rates[idx][epoch, run, :] = rs
+    if num_runs == 1:
+        return [rs[:, 0, :] for rs in rates]
+    else:
+        return rates
+
+
+def rates_data(net, data):
+    """
+    Find the firing rate of each neuron per layer, in response to each data
+    sample. Returns a list, len (num_layers), where each elem contains an array
+    of shape (num_samples, num_nrns).
     """
     num_samples = len(data)
-    rates = np.zeros((net.num_layers - 1))
-    for X, _ in data:
+    rates = [np.full((num_samples, i), np.nan) for i in net.sizes[1:]]
+    for idx, (X, _) in enumerate(data):
         spike_trains_l = net.simulate(X)
-        for idx, spike_trains in enumerate(spike_trains_l):
-            for spikes in spike_trains:
-                rates[idx] += len(spikes)
-    return rates / (num_samples * np.array(net.sizes[1:]))
+        for i, spike_trains in enumerate(spike_trains_l):
+            for j, spikes in enumerate(spike_trains):
+                rates[i][idx, j] = len(spikes)
+    return rates
