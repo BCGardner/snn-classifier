@@ -16,18 +16,17 @@ import json
 from snncls import dataset_loader, helpers
 from lib import scanner, neuron, plotter, common
 
-bounds = (28, 28)
 # Matched to Intel's Loihi encoder for 28x28
 line_eqs_loihi = [(0.844, 6.27), (1.00, -4.62), (-250., 5733.),
                   (-1.654, 23.156), (-0.59, 30.509)]
 
 
 def main(opt):
-    # Random generator
+    # Setup
     rng = np.random.RandomState(opt.seed)
     # Data
-    data_id = 'mnist'
-    X, y = dataset_loader.load_data_file(data_id)
+    X, y = dataset_loader.load_data_file(opt.data_id)
+    bounds = (int(np.sqrt(len(X[0]))),) * 2
     idxs = np.arange(len(X))
     # Normalisation
     data_min = np.min(X)
@@ -60,7 +59,8 @@ def main(opt):
     nrns = []
     for i in xrange(num_scanners):
         if opt.nrn == 'lif':
-            nrns.append(neuron.LIF(dt, R=10., tau_m=3.))
+            nrns.append(neuron.LIF(dt, R=opt.resistance, tau_m=opt.tau_m,
+                                   t_abs=opt.t_abs, v_thr=opt.v_thr))
         elif opt.nrn == 'izh':
             # a=0.2: 5 ms recovery time
             # d=12: suppress late spiking
@@ -130,6 +130,8 @@ def main(opt):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("scanline encoder")
+    # Input data
+    parser.add_argument("--data_id", type=str, default='mnist')
     # Images
     parser.add_argument("-r", "--randomise", action="store_true",
                         help="optional, randomise data selection")
@@ -149,6 +151,14 @@ if __name__ == "__main__":
     # Neurons
     parser.add_argument("--nrn", type=str, default='lif',
                         help="neuron types: 'lif', 'izh'")
+    parser.add_argument("-R", "--resistance", type=float, default=10.,
+                        help="LIF prm")
+    parser.add_argument("--tau_m", type=float, default=3.,
+                        help="LIF prm")
+    parser.add_argument("--t_abs", type=float, default=1.,
+                        help="LIF prm")
+    parser.add_argument("--v_thr", type=float, default=1.,
+                        help="LIF prm")
     # Plotting
     parser.add_argument("-p", "--plot", action="store_true",
                         help="plot last sample")
