@@ -238,7 +238,8 @@ class Plotter(object):
         f, axarr = self.setup_fig((2, 1), figsize=figsize, sharex=True)
         # Plot hidden weights
         axarr[0].hist(w_h.ravel(), bins, normed=normed)
-        y_max = np.ceil(axarr[0].get_ybound()[-1])
+        if y_max is None:
+            y_max = np.ceil(axarr[0].get_ybound()[-1])
         dy = y_max / num_yticks
         axarr[0].set_ylim([0., y_max])
         axarr[0].set_yticks(np.arange(0, y_max + dy, dy))
@@ -251,7 +252,8 @@ class Plotter(object):
                       horizontalalignment='right', bbox=self.props)
         # Plot output weights
         axarr[1].hist(w_o.ravel(), bins, normed=normed)
-        y_max = np.ceil(axarr[1].get_ybound()[-1])
+        if y_max is None:
+            y_max = np.ceil(axarr[1].get_ybound()[-1])
         dy = y_max / num_yticks
         axarr[1].set_ylim([0., y_max])
         axarr[1].set_yticks(np.arange(0, y_max + dy, dy))
