@@ -78,7 +78,12 @@ class Network(object):
         # Set weights to a given value, otherwise randomly intialise according
         # to a uniform distribution
         if weights is not None:
-            self.w = [w.copy() for w in weights]
+            # Check input weight dims match network sizes
+            w_shapes = zip(self.sizes[1:], self.sizes[:-1])
+            assert len(weights) == len(w_shapes)
+            for idx, weight in enumerate(weights):
+                assert np.shape(weight) == w_shapes[idx]
+            self.w = [w.copy().astype(float) for w in weights]
             # Weight bound constraints
             for w in self.w:
                 assert np.all(w >= self.w_bounds[0])
