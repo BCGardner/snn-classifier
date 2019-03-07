@@ -6,8 +6,6 @@ Created on Jun 2017
 @author: BG
 
 Base class for network training.
-
-TODO: Set this class to contain rather than inherit a network.
 """
 
 from __future__ import division
@@ -19,14 +17,16 @@ from snncls import network, learnwindow
 from snncls.parameters import ParamSet
 
 
-class NetworkTraining(network.Network):
+class NetworkTraining(object):
     """
-    Abstract network training class.
+    Abstract network training class. Expected to be compatible with any output
+    cost function.
     """
     def __init__(self, sizes, param, LearnWindow=learnwindow.PSPWindow,
-                 **kwargs):
+                 Network=network.Network, **kwargs):
         """
         Set network learning parameters and learning window.
+        Contains spiking neural network with no conduction delays as default.
         Log average firing rate per epoch by default.
 
         Inputs
@@ -41,7 +41,10 @@ class NetworkTraining(network.Network):
         LearnWindow: class
             Define pre / post spiking correlation window for weight updates.
         """
-        super(NetworkTraining, self).__init__(sizes, param, **kwargs)
+        # Contain network
+        self.net = Network(sizes, param, **kwargs)
+        # Learning rule specific / common parameters
+        self.rng = param.rng
         self.eta = param.net['eta0'] / self.sizes[0]
         self.corr = LearnWindow(param)
 
@@ -100,11 +103,12 @@ class NetworkTraining(network.Network):
         # Learning rate schedule
         assert solver in ['sgd', 'rmsprop', 'adam']
         svr_prms = ParamSet({})
+        weights = self.net.get_weights()
         if solver == 'rmsprop':
             # grad_w_av_sq : EMA of squared gradients
             # decay : decay rate; alpha : lrate; epsilon : numerical stability
             svr_prms.update({'grad_w_av_sq': [np.zeros(w.shape) for
-                                              w in self.w],
+                                              w in weights],
                              'decay': 0.9,
                              'alpha': 0.1,
                              'epsilon': 1e-8,
@@ -114,9 +118,9 @@ class NetworkTraining(network.Network):
             # v : 2nd moments (uncentered variance / EMA of squared gradients)
             # betas : decay terms; alpha : lrate; epsilon : numerical stability
             svr_prms.update({'m': [np.zeros(w.shape) for
-                                   w in self.w],
+                                   w in weights],
                              'v': [np.zeros(w.shape) for
-                                   w in self.w],
+                                   w in weights],
                              'betas': (0.9, 0.999),
                              'alpha': 0.1,
                              'epsilon': 1e-8})
@@ -124,7 +128,7 @@ class NetworkTraining(network.Network):
         # Recordings
         rec = {'tr_loss': np.full(epochs, np.nan)}
         if debug:
-            rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in self.w]
+            rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in weights]
 #            if solver == 'rmsprop':
 #                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
 #                              for w in self.w]
@@ -156,8 +160,9 @@ class NetworkTraining(network.Network):
                                        svr_prms=svr_prms, iters=iters)
             # Debugging recordings
             if debug:
+                weights = self.net.get_weights()
                 for l in xrange(self.num_layers-1):
-                    rec['w'][l][j] = self.w[l].copy()
+                    rec['w'][l][j] = weights[l]
 #                if solver == 'rmsprop':
 #                    for l in xrange(self.num_layers-1):
 #                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
@@ -205,14 +210,15 @@ class NetworkTraining(network.Network):
         # Accumulated gradients of cost function w.r.t. weights
         grad_w_acc = self.grad_accum(mini_batch)
         # Apply accumulated weight changes
+        weights = self.net.get_weights()
         if solver == 'sgd':
-            self.w = [w - self.eta / len(mini_batch) * dC
-                      for w, dC in zip(self.w, grad_w_acc)]
+            weights = [w - self.eta / len(mini_batch) * dC
+                       for w, dC in zip(weights, grad_w_acc)]
         elif solver == 'rmsprop':
             for idx, dC in enumerate(grad_w_acc):
                 prms.grad_w_av_sq[idx] = prms.decay * \
                     prms.grad_w_av_sq[idx] + (1. - prms.decay) * dC**2
-                self.w[idx] -= \
+                weights[idx] -= \
                     prms.alpha / np.sqrt(prms.grad_w_av_sq[idx] +
                                          prms.epsilon) * dC
         elif solver == 'adam':
@@ -224,16 +230,17 @@ class NetworkTraining(network.Network):
                     (1. - prms.betas[1]) * dC**2
                 m_unbias = prms.m[idx] / (1. - prms.betas[0]**iters)
                 v_unbias = prms.v[idx] / (1. - prms.betas[1]**iters)
-                self.w[idx] -= (prms.alpha * m_unbias) / \
+                weights[idx] -= (prms.alpha * m_unbias) / \
                     (np.sqrt(v_unbias) + prms.epsilon)
-        self.clip_weights()
+        self.net.set_weights(weights)
 
     def grad_accum(self, mini_batch):
         """
         Apply backprop to each sample in a mini_batch of data and return list
         of accumulated weight gradients for each layer.
         """
-        grad_w_acc = [np.zeros(w.shape) for w in self.w]
+        weights = self.net.get_weights()
+        grad_w_acc = [np.zeros(w.shape) for w in weights]
         for X, y in mini_batch:
             grad_w = self.backprop(X, y)
             grad_w_acc = [dC + dC_x for dC, dC_x in
