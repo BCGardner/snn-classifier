@@ -102,13 +102,12 @@ class Network(object):
             # Clip out-of-bound weights
             self.clip_weights()
 
-    def simulate_iter(self, stimulus, latency=False, debug=False):
+    def simulate_iter(self, stimulus, latency=False, return_psps=False,
+                      debug=False):
         """
-        TODO: Implement this for delays.
         Network activity in response to an input stimulus driving the
         network. Based on iterative procedure to determine spike times.
-        Profiled at t = 0.34 s (iris, defaults (29/08/18), 20 hidden nrns).
-        Speedup of 9x compared with non-iterative method.
+        Speedup of ~9x compared with non-iterative method.
         Scales less well as number of neurons increases (loops used).
 
         Inputs
@@ -119,6 +118,9 @@ class Network(object):
                 - set of spike trains: list, len (num_inputs)
         latency : bool, optional
             Restrict to just finding first output spikes.
+        return_psps : bool
+            Return PSPs evoked due to each layer, excluding output layer, each
+            with shape (num_nrns, num_subconns, num_iter).
         debug : bool, optional
             Record network dynamics for debugging.
 
@@ -126,6 +128,8 @@ class Network(object):
         -------
         spike_trains_l : list
             List of neuron spike trains, for layers l > 0.
+        psps : list, optional
+            List of PSPs evoked, for layers l < L.
         rec : dict, optional
             Debug recordings containing
             {psps evoked from hidden neurons 'psp', potentials 'u',
@@ -139,30 +143,39 @@ class Network(object):
         # Ensure pattern duration is compatible with look up tables
         assert num_iter == len(self.lut['psp'])
 
-        # Debug
+        # Expand PSPs: shape (num_inputs, num_iter) ->
+        # shape (num_inputs, num_subs, num_iter)
+        shape = (len(psp_inputs), self.num_subs, num_iter)
+        psps = np.zeros(shape)
+        for i, delay in enumerate(self.delays):
+            psps[:, i, delay:] = psp_inputs[:, :-delay]
+
+        # Record
+        rec = {}
+        if return_psps:
+            rec['psp'] = [np.empty((i, self.num_subs, num_iter))
+                          for i in self.sizes[:-1]]
+            rec['psp'][0] = psps
         if debug:
-            rec = {'psp': [np.empty((i, num_iter))
-                           for i in self.sizes[1:]],
-                   'u': [np.empty((i, num_iter))
-                         for i in self.sizes[1:]],
-                   'S': [np.empty((i, num_iter), dtype=int)
-                         for i in self.sizes[1:]],
-                   'smpls': []}
+            rec.update({'u': [np.empty((i, num_iter))
+                              for i in self.sizes[1:]],
+                        'S': [np.empty((i, num_iter), dtype=int)
+                              for i in self.sizes[1:]],
+                        'smpls': []})
         # Spike trains for layers: l > 0
         spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
                           for i in xrange(1, self.num_layers)]
 
         # === Run simulation ================================================ #
 
-        # PSPs evoked by input neurons
-        psps = psp_inputs
         # Hidden layer responses: l = [1, L)
         for l in xrange(self.num_layers - 2):
-            potentials = np.dot(self.w[l], psps)
-            # Stochastic spiking
+            potentials = np.tensordot(self.w[l], psps)
+            # Stochastic spiking: the order in which random values are sampled
+            # differs from simulate_steps
             unif_samples = self.rng.uniform(size=np.shape(potentials))
             # PSPs evoked by this layer
-            psps = np.zeros((self.sizes[l+1], num_iter))
+            psps = np.zeros((self.sizes[l+1], self.num_subs, num_iter))
             for i in xrange(self.sizes[l+1]):
                 num_spikes = 0
                 while True:
@@ -173,21 +186,23 @@ class Network(object):
                         fire_idx = thr_idxs[num_spikes]
                         iters = num_iter - fire_idx
                         potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                        psps[i, fire_idx:] += self.lut['psp'][:iters]
+                        for j, delay in enumerate(self.delays):
+                            psps[i, j, fire_idx+delay:] += \
+                                self.lut['psp'][:iters-delay]
                         spike_trains_l[l][i] = \
                             np.append(spike_trains_l[l][i],
                                       fire_idx * self.dt)
                         num_spikes += 1
                     else:
                         break
+            # Record
+            if return_psps:
+                rec['psp'][l+1] = psps
             if debug:
                 rec['u'][l] = potentials
-                rec['psp'][l] = psps
                 rec['smpls'].append(unif_samples)
         # Output responses
-        potentials = np.dot(self.w[-1], psps)
-        # PSPs evoked by this layer
-        psps = np.zeros((self.sizes[-1], num_iter))
+        potentials = np.tensordot(self.w[-1], psps)
         for i in xrange(self.sizes[-1]):
             num_spikes = 0
             while True:
@@ -197,7 +212,6 @@ class Network(object):
                     fire_idx = thr_idxs[num_spikes]
                     iters = num_iter - fire_idx
                     potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                    psps[i, fire_idx:] += self.lut['psp'][:iters]
                     spike_trains_l[-1][i] = np.append(spike_trains_l[-1][i],
                                                       fire_idx * self.dt)
                     # Optimisation: skip output spikes after first
@@ -209,16 +223,17 @@ class Network(object):
                     break
         if debug:
             rec['u'][-1] = potentials
-            rec['psp'][-1] = psps
 
         if debug:
             return spike_trains_l, rec
         else:
-            return spike_trains_l
+            if return_psps:
+                return spike_trains_l, rec['psp']
+            else:
+                return spike_trains_l
 
-    def simulate_steps(self, stimulus, debug=False):
+    def simulate_steps(self, stimulus, return_psps=False, debug=False):
         """
-        TODO: implement this.
         Network activity in response to an input pattern presented to the
         network. Conduction delays are included.
 
@@ -229,6 +244,9 @@ class Network(object):
                 - predetermined (pre-shifted) psps: array,
                   shape (num_inputs, num_iter)
                 - set of spike trains: list, len (num_inputs)
+        return_psps : bool
+            Return PSPs evoked due to each layer, excluding output layer, each
+            with shape (num_nrns, num_subconns, num_iter).
         debug : bool
             Record network dynamics for debugging.
 
@@ -236,6 +254,8 @@ class Network(object):
         -------
         spiked_l : list
             List of boolean spike trains in layers l > 1.
+        psps : list, optional
+            List of PSPs evoked, for layers l < L.
         rec : dict, optional
             Debug recordings containing
             {hidden layer psps 'psp', potential 'u', bool spike trains 'S'}.
@@ -245,14 +265,18 @@ class Network(object):
         # Cast stimulus to PSPs evoked by input neurons
         psp_inputs = self.stimulus_as_psps(stimulus)
         num_iter = psp_inputs.shape[1]
+
+        # Record
+        rec = {}
+        if return_psps:
+            rec['psp'] = [np.empty((i, self.num_subs, num_iter))
+                          for i in self.sizes[:-1]]
         # Debug
         if debug:
-            rec = {'psp': [np.empty((i, self.num_subs, num_iter))
-                           for i in self.sizes[:-1]],
-                   'u': [np.empty((i, num_iter))
-                         for i in self.sizes[1:]],
-                   'S': [np.empty((i, num_iter), dtype=int)
-                         for i in self.sizes[1:]]}
+            rec.update({'u': [np.empty((i, num_iter))
+                              for i in self.sizes[1:]],
+                        'S': [np.empty((i, num_iter), dtype=int)
+                              for i in self.sizes[1:]]})
         # Bool spike trains in each layer: l > 1
         spiked_l = [np.zeros((i, num_iter), dtype=bool)
                     for i in self.sizes[1:]]
@@ -289,9 +313,10 @@ class Network(object):
                 rates = self.neuron_h.activation(potentials)
                 spiked_l[l][:, t_step] = self.rng.rand(len(rates)) < \
                     self.dt * rates
-                # Debugging
-                if debug:
+                # Record
+                if return_psps:
                     rec['psp'][l][:, :, t_step] = psps
+                if debug:
                     rec['u'][l][:, t_step] = potentials
                 # Propagated, evoked PSPs at next layer
                 psps = psp_l[l][:, self.delays]
@@ -305,9 +330,10 @@ class Network(object):
             for l in xrange(self.num_layers - 1):
                 reset_l[l][spiked_l[l][:, t_step]] += \
                     self.cell_params['kappa_0']
-            # Debugging
-            if debug:
+            # Record
+            if return_psps:
                 rec['psp'][-1][:, :, t_step] = psps
+            if debug:
                 rec['u'][-1][:, t_step] = potentials
                 for l in xrange(self.num_layers - 1):
                     rec['S'][l][:, t_step] = spiked_l[l][:, t_step]
@@ -322,7 +348,10 @@ class Network(object):
         if debug:
             return spike_trains_l, rec
         else:
-            return spike_trains_l
+            if return_psps:
+                return spike_trains_l, rec['psp']
+            else:
+                return spike_trains_l
 
     def simulate_steps_nondelay(self, psp_inputs, debug=False):
         """
