@@ -52,3 +52,9 @@ Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup 
 - scan lines matched to Loihi paper (five total).
 - Contains 600 samples, selected randomly (seed 42).
 
+## mnist3750_radon28
+
+- First 3750 training samples of MNIST, radon-transformed using 28 projections.
+- Projections selected from [0, 180) in equal steps.
+- Radon projections assume a circular image.
+
