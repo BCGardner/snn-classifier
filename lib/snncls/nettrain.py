@@ -45,7 +45,7 @@ class NetworkTraining(object):
         self.net = Network(sizes, param, **kwargs)
         # Learning rule specific / common parameters
         self.rng = param.rng
-        self.eta = param.net['eta0'] / self.sizes[0]
+        self.eta = param.net['eta0'] / sizes[0]
         self.corr = LearnWindow(param)
 
     def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
