@@ -5,7 +5,7 @@ Created on Jun 2017
 
 @author: BG
 
-Base class for network training.
+Base class for network training and data classification.
 """
 
 from __future__ import division
