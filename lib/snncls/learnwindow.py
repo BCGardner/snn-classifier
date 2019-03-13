@@ -120,3 +120,4 @@ class PSPWindow(LearnWindow):
         corr_oh = corr_oh[:, np.newaxis, :]
         psp_in = psp_in[np.newaxis, :, :]  # Prep for broadcasting
         return np.sum(corr_oh * psp_in, 2)
+#        return np.dot(corr_oh, psp_in.T)
