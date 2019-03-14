@@ -161,8 +161,8 @@ class NetworkTraining(object):
             # Debugging recordings
             if debug:
                 weights = self.net.get_weights()
-                for l in xrange(self.num_layers-1):
-                    rec['w'][l][j] = weights[l]
+                for l, w in enumerate(weights):
+                    rec['w'][l][j] = w
 #                if solver == 'rmsprop':
 #                    for l in xrange(self.num_layers-1):
 #                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
@@ -176,7 +176,8 @@ class NetworkTraining(object):
                     delta_losses = np.diff(te_losses) / te_loss0
                     cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
                     if not cond.any():
-                        print "Stop Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
+                        print("Stop Epoch {0}\t\t{1:.3f}".format(j,
+                              rec['tr_loss'][j]))
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
