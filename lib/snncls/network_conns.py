@@ -19,7 +19,7 @@ class Network(netbase.NetBase):
     """
     Spiking neural network with conduction delays.
     """
-    def __init__(self, sizes, param, weights=None, num_subs=1, max_delay=10,
+    def __init__(self, sizes, param, weights=None, num_subs=1, max_delay=10.,
                  **kwargs):
         """
         Randomly initialise weights of neurons in each layer.
@@ -41,8 +41,8 @@ class Network(netbase.NetBase):
         super(Network, self).__init__(sizes, param, **kwargs)
         # Initialise subconnections
         self.num_subs = num_subs
-        self.delays = self.times2steps(np.linspace(1, max_delay, num=num_subs,
-                                                   dtype=int))
+        self.delays = \
+            self.times2steps(np.linspace(1., max_delay, num=num_subs))
         # Prototype weights
         self.w = [np.empty((i, j, self.num_subs))
                   for i, j in zip(self.sizes[1:], self.sizes[:-1])]
