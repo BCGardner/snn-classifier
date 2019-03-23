@@ -33,19 +33,24 @@ class Network(netbase.NetBase):
         weights : list, optional
             Sets initial network weights. List of len (num_layers-1), where
             each element is an array of shape (num_post, num_pre, num_subs).
-        num_subs : int
-            Number of subconnections per neuron in each layer.
+        num_subs : int, array-like
+            Number of incoming subconnections per neuron for layers l > 0.
         max_delay : int
             Maximum conduction delay for num_subs > 1.
         """
         super(Network, self).__init__(sizes, param, **kwargs)
         # Initialise subconnections
-        self.num_subs = num_subs
-        self.delays = \
-            self.times2steps(np.linspace(1., max_delay, num=num_subs))
+        if np.isscalar(num_subs):
+            self.num_subs = [num_subs for i in xrange(self.num_layers - 1)]
+        else:
+            self.num_subs = np.asarray(num_subs, dtype=int)
+        # Delays as time steps
+        self.delays = [self.times2steps(np.linspace(1., max_delay, num=i))
+                       for i in self.num_subs]
         # Prototype weights
-        self.w = [np.empty((i, j, self.num_subs))
-                  for i, j in zip(self.sizes[1:], self.sizes[:-1])]
+        self.w = [np.empty((i, j, k))
+                  for i, j, k in zip(self.sizes[1:], self.sizes[:-1],
+                  self.num_subs)]
         # Initialise network state
         self.reset(weights=weights)
 
@@ -66,16 +71,17 @@ class Network(netbase.NetBase):
         else:
             weights = []
             # Hidden layers
-            for i, j in zip(self.sizes[1:-1], self.sizes[:-2]):
+            for i, j, k in zip(self.sizes[1:-1], self.sizes[:-2],
+                               self.num_subs[:-1]):
                 weights.append(self.rng.uniform(*self.w_h_init,
-                                                size=(i, j, self.num_subs)))
+                                                size=(i, j, k)))
             # Output layer
             weights.append(self.rng.uniform(*self.w_o_init,
                                             size=(self.sizes[-1],
                                                   self.sizes[-2],
-                                                  self.num_subs)))
+                                                  self.num_subs[-1])))
             # Normalise weights w.r.t. num_subs
-            weights = [w / self.num_subs for w in weights]
+            weights = [w / w.shape[-1] for w in weights]
             # Set values
             self.set_weights(weights)
 
@@ -117,19 +123,18 @@ class Network(netbase.NetBase):
         num_iter = psp_inputs.shape[1]
         # Ensure pattern duration is compatible with look up tables
         assert num_iter == len(self.lut['psp'])
-
         # Expand PSPs: shape (num_inputs, num_iter) ->
         # shape (num_inputs, num_subs, num_iter)
-        shape = (len(psp_inputs), self.num_subs, num_iter)
+        shape = (len(psp_inputs), self.num_subs[0], num_iter)
         psps = np.zeros(shape)
-        for i, delay in enumerate(self.delays):
+        for i, delay in enumerate(self.delays[0]):
             psps[:, i, delay:] = psp_inputs[:, :-delay]
 
         # Record
         rec = {}
         if return_psps:
-            rec['psp'] = [np.empty((i, self.num_subs, num_iter))
-                          for i in self.sizes[:-1]]
+            rec['psp'] = [np.empty((i, j, num_iter))
+                          for i, j in zip(self.sizes[:-1], self.num_subs)]
             rec['psp'][0] = psps
         if debug:
             rec['u'] = [np.empty((i, num_iter))
@@ -147,7 +152,7 @@ class Network(netbase.NetBase):
             # differs from simulate_steps
             unif_samples = self.rng.uniform(size=np.shape(potentials))
             # PSPs evoked by this layer
-            psps = np.zeros((self.sizes[l+1], self.num_subs, num_iter))
+            psps = np.zeros((self.sizes[l+1], self.num_subs[l+1], num_iter))
             for i in xrange(self.sizes[l+1]):
                 num_spikes = 0
                 while True:
@@ -158,7 +163,7 @@ class Network(netbase.NetBase):
                         fire_idx = thr_idxs[num_spikes]
                         iters = num_iter - fire_idx
                         potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                        for j, delay in enumerate(self.delays):
+                        for j, delay in enumerate(self.delays[l+1]):
                             psps[i, j, fire_idx+delay:] += \
                                 self.lut['psp'][:iters-delay]
                         spike_trains_l[l][i] = \
@@ -240,9 +245,8 @@ class Network(netbase.NetBase):
         # Record
         rec = {}
         if return_psps:
-            rec['psp'] = [np.empty((i, self.num_subs, num_iter))
-                          for i in self.sizes[:-1]]
-        # Debug
+            rec['psp'] = [np.empty((i, j, num_iter))
+                          for i, j in zip(self.sizes[:-1], self.num_subs)]
         if debug:
             rec.update({'u': [np.empty((i, num_iter))
                               for i in self.sizes[1:]],
@@ -253,13 +257,14 @@ class Network(netbase.NetBase):
                     for i in self.sizes[1:]]
         # PSPs are padded to account for maximum conduction delay
         # PSPs : array, shape -> (num_inputs, num_iter + max_delay_iter)
-        psp_inputs = np.concatenate((psp_inputs, np.zeros((self.sizes[0],
-                                                           self.delays[-1]))),
-                                    axis=1)
+        psp_inputs = np.concatenate((psp_inputs,
+                                     np.zeros((self.sizes[0],
+                                               self.delays[0][-1]))), axis=1)
         # PSPs from each layer: 1 <= l < L, reset kernels in each layer: l >= 1
         # Membrane, synaptic exponential decays with memory up to max delay
-        psp_trace_l = [np.zeros((2, i, self.delays[-1] + 1))
-                       for i in self.sizes[1:-1]]
+        psp_trace_l = [np.zeros((2, i, delays[-1] + 1))
+                       for i, delays in zip(self.sizes[1:-1],
+                                            self.delays[1:])]
         reset_l = [np.zeros(i) for i in self.sizes[1:]]
 
         # === Run simulation ================================================ #
@@ -277,7 +282,7 @@ class Network(netbase.NetBase):
             psp_l = [traces[0] - traces[1] for traces in psp_trace_l]
             reset_l = [traces * self.decay_m for traces in reset_l]
             # PSPs contributed by inputs at each delay
-            psps = psp_inputs[:, t_step - self.delays]
+            psps = psp_inputs[:, t_step - self.delays[0]]
             # Hidden layer responses: 1 <= l < L
             for l in xrange(self.num_layers - 2):
                 potentials = np.tensordot(self.w[l], psps) + reset_l[l]
@@ -290,7 +295,7 @@ class Network(netbase.NetBase):
                 if debug:
                     rec['u'][l][:, t_step] = potentials
                 # Propagated, evoked PSPs at next layer
-                psps = psp_l[l][:, self.delays]
+                psps = psp_l[l][:, self.delays[l+1]]
             # Output layer response
             potentials = np.tensordot(self.w[-1], psps) + reset_l[-1]
             spiked_l[-1][:, t_step] = potentials > self.cell_params['theta']

@@ -99,6 +99,8 @@ class NetBase(object):
         Sets a stimulus as an array of evoked psps.
         Stimulus: list / array -> psps: array, shape (num_nrns, num_iter).
         """
+        # Check num_inputs matched to stimulus size
+        assert self.sizes[0] == len(stimulus)
         if type(stimulus) is list:
             # Presents as a list of spike trains, len (num_nrns)
             return preprocess.pattern2psps(stimulus, self.dt, self.duration,
