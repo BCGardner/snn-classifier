@@ -163,6 +163,9 @@ class Network(netbase.NetBase):
                         fire_idx = thr_idxs[num_spikes]
                         iters = num_iter - fire_idx
                         potentials[i, fire_idx:] += self.lut['refr'][:iters]
+                        # TODO: Broadcasting ValueError here (e.g. (0,) (590,) (0,))
+                        # TODO: Broadcasting ValueError here (e.g. (0,) (393,) (0,))
+                        # TODO: Broadcasting ValueError here (e.g. (0,) (392,) (0,))
                         for j, delay in enumerate(self.delays[l+1]):
                             psps[i, j, fire_idx+delay:] += \
                                 self.lut['psp'][:iters-delay]
