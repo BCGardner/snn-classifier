@@ -45,6 +45,7 @@ class Network(netbase.NetBase):
         else:
             self.num_subs = np.asarray(num_subs, dtype=int)
         # Delays as time steps
+        assert max_delay > 1.
         self.delays = [self.times2steps(np.linspace(1., max_delay, num=i))
                        for i in self.num_subs]
         # Prototype weights
@@ -163,12 +164,11 @@ class Network(netbase.NetBase):
                         fire_idx = thr_idxs[num_spikes]
                         iters = num_iter - fire_idx
                         potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                        # TODO: Broadcasting ValueError here (e.g. (0,) (590,) (0,))
-                        # TODO: Broadcasting ValueError here (e.g. (0,) (393,) (0,))
-                        # TODO: Broadcasting ValueError here (e.g. (0,) (392,) (0,))
                         for j, delay in enumerate(self.delays[l+1]):
-                            psps[i, j, fire_idx+delay:] += \
-                                self.lut['psp'][:iters-delay]
+                            fire_idx_delay = fire_idx + delay
+                            if fire_idx_delay < num_iter:
+                                psps[i, j, fire_idx_delay:] += \
+                                    self.lut['psp'][:iters-delay]
                         spike_trains_l[l][i] = \
                             np.append(spike_trains_l[l][i],
                                       fire_idx * self.dt)
