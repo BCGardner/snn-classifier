@@ -458,7 +458,7 @@ class Plotter(object):
         # Save
         self.print_plot(f, fname)
 
-    def errbars(self, *losses, **kwargs):
+    def losses(self, *losses, **kwargs):
         """
         Plot set of loss curves, sharing same length.
         Each set of loss curves has shape (num_epochs, num_runs).
