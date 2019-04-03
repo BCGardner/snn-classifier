@@ -6,6 +6,10 @@ Created on Feb 2019
 @author: BG
 
 Network with multiple subconnections and conduction delays.
+
+TODO: as part of initialisation, provide option of constraining zero-valued
+weights for experimentation with missing subconnections (i.e. to mimic random
+delay connectivity between layers).
 """
 
 from __future__ import division
@@ -20,7 +24,7 @@ class Network(netbase.NetBase):
     Spiking neural network with conduction delays.
     """
     def __init__(self, sizes, param, weights=None, num_subs=1, max_delay=10.,
-                 **kwargs):
+                 delay_distr='lin', **kwargs):
         """
         Randomly initialise weights of neurons in each layer.
 
@@ -37,17 +41,29 @@ class Network(netbase.NetBase):
             Number of incoming subconnections per neuron for layers l > 0.
         max_delay : int
             Maximum conduction delay for num_subs > 1.
+        delay_distr : str
+            Distribution used to set subconnection delay values,
+            between 1 and 10 ms. Choices include: {'lin' (default), 'unif'}.
         """
         super(Network, self).__init__(sizes, param, **kwargs)
-        # Initialise subconnections
+
+        # Initialise subconnections and delays
         if np.isscalar(num_subs):
             self.num_subs = [num_subs for i in xrange(self.num_layers - 1)]
         else:
             self.num_subs = np.asarray(num_subs, dtype=int)
-        # Delays as time steps
         assert max_delay > 1.
-        self.delays = [self.times2steps(np.linspace(1., max_delay, num=i))
-                       for i in self.num_subs]
+
+        def distr_type(key, low=1., high=10.):
+            # Return a desired distribution function, specified over
+            # a given range of possible values
+            choices = {'lin': lambda num: np.linspace(low, high, num=num),
+                       'unif': lambda num: self.rng.uniform(low, high,
+                                                            size=num)}
+            return choices[key]
+        distr = distr_type(delay_distr)
+        self.delays = [self.times2steps(distr(i)) for i in self.num_subs]
+
         # Prototype weights
         self.w = [np.empty((i, j, k))
                   for i, j, k in zip(self.sizes[1:], self.sizes[:-1],
