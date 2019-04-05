@@ -102,6 +102,13 @@ class Network(netbase.NetBase):
             # Set values
             self.set_weights(weights)
 
+    def set_weights(self, weights, assert_bounds=False):
+        """
+        Set network weights to new values, subject to constraints, including
+        missing subconnections (weights clamped to zero).
+        """
+        super(Network, self).set_weights(weights, assert_bounds)
+
     def simulate(self, stimulus, latency=False, return_psps=False,
                  debug=False):
         """
