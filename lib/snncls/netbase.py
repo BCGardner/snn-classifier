@@ -21,8 +21,7 @@ class NetBase(object):
     Connectivity is feedforward with all-all connectivity.
     Subthreshold neuronal dynamics are governed by LIF model in all layers.
     """
-    def __init__(self, sizes, param, weights=None,
-                 EscapeRate=escape_noise.ExpRate):
+    def __init__(self, sizes, param, EscapeRate=escape_noise.ExpRate):
         """
         Initialise common network parameters, constraints, cell parameters,
         optimisations.
