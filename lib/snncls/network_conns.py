@@ -24,7 +24,7 @@ class Network(netbase.NetBase):
     Spiking neural network with conduction delays.
     """
     def __init__(self, sizes, param, weights=None, num_subs=1, max_delay=10.,
-                 delay_distr='lin', **kwargs):
+                 conns_fr=None, delay_distr='lin', **kwargs):
         """
         Randomly initialise weights of neurons in each layer.
 
@@ -41,6 +41,8 @@ class Network(netbase.NetBase):
             Number of incoming subconnections per neuron for layers l > 0.
         max_delay : int
             Maximum conduction delay for num_subs > 1.
+        conns_fr : float
+            Fraction of hidden subconns randomly enabled at init.
         delay_distr : str
             Distribution used to set subconnection delay values,
             between 1 and 10 ms. Choices include: {'lin' (default), 'unif'}.
@@ -68,6 +70,19 @@ class Network(netbase.NetBase):
         self.w = [np.empty((i, j, k))
                   for i, j, k in zip(self.sizes[1:], self.sizes[:-1],
                   self.num_subs)]
+        # Hidden weights mask with values clamped to zero
+        if conns_fr is not None:
+            self.conns_fr = conns_fr
+            self.clamp_mask = [np.zeros(w.shape, dtype=bool)
+                               for w in self.w[:-1]]
+            for idx, w in enumerate(self.w[:-1]):
+                num_clamps = \
+                    np.round((1. - conns_fr) * self.num_subs[idx]).astype(int)
+                assert 0 <= num_clamps < self.num_subs[idx]
+                for coord in np.ndindex(w.shape[:-1]):
+                    clamp_idxs = self.rng.choice(self.num_subs[idx],
+                                                 num_clamps, replace=False)
+                    self.clamp_mask[idx][coord][clamp_idxs] = True
         # Initialise network state
         self.reset(weights=weights)
 
@@ -98,7 +113,15 @@ class Network(netbase.NetBase):
                                                   self.sizes[-2],
                                                   self.num_subs[-1])))
             # Normalise weights w.r.t. num_subs
-            weights = [w / w.shape[-1] for w in weights]
+            if hasattr(self, 'clamp_mask'):
+                # Num. actual hidden weights with clamped values
+                for idx, w in enumerate(weights[:-1]):
+                    num_conns = np.round(self.conns_fr *
+                                         self.num_subs[idx]).astype(int)
+                    w /= num_conns
+                weights[-1] /= self.num_subs[-1]
+            else:
+                weights = [w / w.shape[-1] for w in weights]
             # Set values
             self.set_weights(weights)
 
@@ -108,6 +131,9 @@ class Network(netbase.NetBase):
         missing subconnections (weights clamped to zero).
         """
         super(Network, self).set_weights(weights, assert_bounds)
+        if hasattr(self, 'clamp_mask'):
+            for w, m in zip(self.w[:-1], self.clamp_mask):
+                w[m] = 0.
 
     def simulate(self, stimulus, latency=False, return_psps=False,
                  debug=False):
