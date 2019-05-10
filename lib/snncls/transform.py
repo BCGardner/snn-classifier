@@ -13,6 +13,8 @@ from __future__ import division
 
 import numpy as np
 
+from snncls import scanline
+
 
 class BaseModel(object):
     """
@@ -321,6 +323,101 @@ class ReceptiveFields(BaseModel):
         self.sigmas = 1. / self.beta * (X_max - X_min) / (self.neurons_f - 2)
         # Update fitted parameters
         self.update_fit(X, (X_min, X_max))
+
+
+class ScanLines(BaseModel):
+    """
+    Considers each data sample as a flat, 1D array of image pixels with square
+    boundaries. Images consist of grayscale real values that are e.g. in the
+    range [0, 256). This model transforms images into spike trains via
+    scanline encoding.
+    """
+    def __init__(self, num_scans=12, duration=9., dt=0.1, distr='ctr',
+                 scale=0.25, scantype='lif', rng=None, **kwargs):
+        """
+        Sets transformation parameters.
+
+        Inputs
+        ------
+        num_scans : int
+            Number of scanline-encoders.
+        duration : float
+            Scan duration (ms).
+        dt : float
+            Scan step size (ms).
+        distr : str
+            Scanline distribution: {'loihi', 'edges', 'ctr'}.
+        scale : float
+            Scale parameter used for line distribution.
+        scantype : str
+            Scanner type: {'lif', 'izh'}.
+        rng : int or RandomState object
+            Seed or random number generator.
+        """
+        super(ScanLines, self).__init__()
+        if isinstance(rng, np.random.RandomState):
+            self.rng = rng
+        else:
+            self.rng = np.random.RandomState(rng)
+        # Scanlines
+        self.num_scans = num_scans
+        self.duration = duration
+        self.dt = dt
+        self._times = np.arange(0., duration, dt)
+        # Distr. type
+        if distr in ['loihi', 'edges', 'ctr']:
+            self.distr = distr
+        else:
+            raise TypeError('Invalid scanline distribution.')
+        # Scanline-encoder / neuron setup
+        if scantype == 'lif':
+            NrnType = scanline.neuron.LIF
+        elif scantype == 'izh':
+            NrnType = scanline.neuron.Izhikevich
+        else:
+            raise TypeError('Invalid scanner type.')
+        self._nrns = []
+        for i in xrange(self.num_scans):
+            self._nrns.append(NrnType(dt, **kwargs))
+
+    def transform(self, X):
+        """
+        Scan input data X (num_samples, num_features): transforming images into
+        spike trains.
+        """
+        self.check_fit(X)
+        # Intensity of responses
+        m, n = X.shape
+        spike_trains = []
+        return spike_trains
+
+    def fit(self, X, xlim=None):
+        """
+        Sets up this model for example data. Each feature is a sequence of
+        float values.
+
+        Inputs
+        ------
+        X : array, shape (num_samples, num_features)
+            Data set.
+        xlim : 2-tuple, optional
+            Feature value range: if None then inferred from X.
+        """
+        # num_samples, num_features
+        m, n = X.shape
+        # Scanline Eqs.
+        if self.distr == 'loihi':
+            line_eqs = scanline.linegen.loihi_eqs
+        elif self.distr == 'edges':
+            line_eqs = scanline.linegen.generate_eqs(self.num_scans,
+                                                     scale=self.scale,
+                                                     rng=self.rng)
+        elif self.distr == 'ctr':
+            line_eqs = scanline.linegen.generate_eqs_ctr(self.num_scans,
+                                                         scale=self.scale,
+                                                         rng=self.rng)
+        # Update fitted parameters
+        self.update_fit(X, xlim)
 
 
 def gaussian(x, mu, sigma):
