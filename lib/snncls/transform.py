@@ -332,7 +332,7 @@ class ScanLines(BaseModel):
     range [0, 256). This model transforms images into spike trains via
     scanline encoding.
     """
-    def __init__(self, num_scans=12, duration=9., dt=0.1, distr='ctr',
+    def __init__(self, num_scans=5, duration=9., dt=0.1, distr='loihi',
                  scale=0.25, scantype='lif', rng=None, **kwargs):
         """
         Sets transformation parameters.
@@ -369,6 +369,9 @@ class ScanLines(BaseModel):
             self.distr = distr
         else:
             raise TypeError('Invalid scanline distribution.')
+        if distr == 'loihi':
+            assert num_scans == 5
+        self.scale = scale
         # Scanline-encoder / neuron setup
         if scantype == 'lif':
             NrnType = scanline.neuron.LIF
@@ -386,9 +389,30 @@ class ScanLines(BaseModel):
         spike trains.
         """
         self.check_fit(X)
-        # Intensity of responses
-        m, n = X.shape
-        spike_trains = []
+        # Normalise data
+        X_ = (X - self._X_min) / (self._X_max - self._X_min)
+        # List of spike patterns
+        spike_trains = [[np.array([]) for i in xrange(self.num_scans)]
+                        for j in xrange(len(X_))]
+        # Scan each sample
+        for x, spike_train in zip(X_, spike_trains):
+            img = x.reshape(self.bounds)
+            # Reset scanners and associated neurons
+            for scnr, nrn in zip(self._scanners, self._nrns):
+                scnr.reset()
+                nrn.reset()
+            for t in self._times:
+                for idx, scnr in enumerate(self._scanners):
+                    # Read
+                    stimulus = scnr.read(img)
+                    # Update
+                    fired = self._nrns[idx].update(stimulus)
+                    scnr.translate(self.dt)
+                    # Record nrn
+                    if fired:
+                        spike_time = np.around(t, decimals=1)
+                        spike_train[idx] = \
+                            np.append(spike_train[idx], spike_time)
         return spike_trains
 
     def fit(self, X, xlim=None):
@@ -403,19 +427,28 @@ class ScanLines(BaseModel):
         xlim : 2-tuple, optional
             Feature value range: if None then inferred from X.
         """
-        # num_samples, num_features
-        m, n = X.shape
+        # Data bounds
+        self.bounds = (int(np.sqrt(len(X[0]))),) * 2
+        if xlim is None:
+            xlim = np.min(X), np.max(X)
         # Scanline Eqs.
         if self.distr == 'loihi':
             line_eqs = scanline.linegen.loihi_eqs
         elif self.distr == 'edges':
             line_eqs = scanline.linegen.generate_eqs(self.num_scans,
+                                                     bounds=self.bounds,
                                                      scale=self.scale,
                                                      rng=self.rng)
         elif self.distr == 'ctr':
             line_eqs = scanline.linegen.generate_eqs_ctr(self.num_scans,
+                                                         bounds=self.bounds,
                                                          scale=self.scale,
                                                          rng=self.rng)
+        # Setup scanners
+        self._scanners = []
+        for eq in line_eqs:
+            self._scanners.append(scanline.scanner.Scanner(eq, self.bounds,
+                                                           self.duration))
         # Update fitted parameters
         self.update_fit(X, xlim)
 
