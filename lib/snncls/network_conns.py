@@ -41,7 +41,7 @@ class Network(netbase.NetBase):
             Number of incoming subconnections per neuron for layers l > 0.
         max_delay : int
             Maximum conduction delay for num_subs > 1.
-        conns_fr : float
+        conns_fr : float, optional
             Fraction of hidden subconns randomly enabled at init.
         delay_distr : str
             Distribution used to set subconnection delay values,
@@ -63,7 +63,7 @@ class Network(netbase.NetBase):
                        'unif': lambda num: self.rng.uniform(low, high,
                                                             size=num)}
             return choices[key]
-        distr = distr_type(delay_distr)
+        distr = distr_type(delay_distr, high=max_delay)
         self.delays = [self.times2steps(distr(i)) for i in self.num_subs]
 
         # Prototype weights
