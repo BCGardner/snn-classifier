@@ -54,6 +54,9 @@ class SimParam(object):
         """
         Update parameter sets for matching keys, update derived parameters.
         """
+        # Aliases
+        if 'w_lim' in kwargs:
+            kwargs['w_bounds'] = (-kwargs['w_lim'], kwargs['w_lim'])
         self.cell.overwrite(**kwargs)
         self.net.overwrite(**kwargs)
         self.pattern.overwrite(**kwargs)
