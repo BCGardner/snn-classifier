@@ -124,7 +124,7 @@ class Plotter(object):
         # Save
         self.print_plot(f, fname)
 
-    def data_violin(self, arr, xlim=None, ylim=None, dy=None, xlabel=None,
+    def data_violin(self, arr, xticklabels=None, ylim=None, dy=None, xlabel=None,
                     ylabel=None, figsize=None, fname=None):
         """
         Violin plots for each column of a data array. Array may be 1D or 2D.
@@ -146,7 +146,10 @@ class Plotter(object):
         parts['cmaxes'].set_color('black')
         parts['cmins'].set_color('black')
         # Limits and ticks
-        ax.set_xlim(xlim)
+        if xticklabels is not None:
+            xticklabels = [''] + xticklabels
+            ax.set_xticks(np.arange(len(xticklabels)))
+            ax.set_xticklabels(xticklabels)
         ax.set_ylim(ylim)
         if dy is not None:
             lims = ax.get_ylim()
