@@ -13,8 +13,82 @@ import time
 import itertools
 import copy
 import psutil
+from argparse import Namespace
 
 import numpy as np
+
+
+def args_map(worker_func, args, prm_labels=None, report=True):
+    """
+    Maps parsed arguments to a pool of workers, using one list of arguments.
+    """
+    # Sweeped parameters
+    if prm_labels is not None:
+        prm_vals = [vars(args)[k] for k in prm_labels]
+    else:
+        prm_vals = [[None]]
+    grid_shape = tuple([len(i) for i in prm_vals])
+    num_args = np.prod(grid_shape + (args.num_runs,))
+
+    # Setup pool of workers
+    if args.num_proc is not None:
+        pool = mp.Pool(processes=args.num_proc, maxtasksperchild=None)
+    else:
+        num_phys_cores = psutil.cpu_count(logical=False)
+        pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
+    if report:
+        print 'Num workers: {}'.format(pool._processes)
+        t_start = time.time()
+
+    # Initialise seeds
+    if args.seed is not None:
+        seeds = range(args.seed, num_args + args.seed)
+    else:
+        seeds = list(itertools.repeat(None, num_args))
+
+    # Create arguments list, len (num_prms0 x num_prms1 x ... x num_runs)
+    args_dict = vars(args)
+    wkr_args = []
+    for idx, vals in enumerate(itertools.product(*prm_vals)):
+        prmset_dict = dict(args_dict)
+        if prm_labels is not None:
+            for k, v in zip(prm_labels, vals):
+                prmset_dict[k] = v
+        # Repeated runs per parameter point
+        args_runs = []
+        for i in xrange(args.num_runs):
+            d = copy.deepcopy(prmset_dict)
+            args_runs.append(Namespace(**d))
+        # Assign (unique) seeds
+        offset = idx * args.num_runs
+        for args_run, seed in zip(args_runs,
+                                  seeds[offset:offset+args.num_runs]):
+            args_run.seed = seed
+        # Assign repeated args
+        wkr_args += args_runs
+        if prm_labels is not None and report:
+            coord = np.unravel_index(idx, grid_shape)
+            print('{}: {}'.format(coord, [prmset_dict[label]
+                                          for label in prm_labels]))
+
+    # Assign parallel jobs
+    results = pool.map(worker_func, wkr_args)
+
+    # Cleanup
+    pool.close()
+    pool.join()
+    if report:
+        t_elapsed = time.time() - t_start
+        print '{:.2f} s'.format(t_elapsed)
+
+    # Gather results as array of lists
+    results = [results[i:i+args.num_runs] for i in
+               xrange(0, len(results), args.num_runs)]
+    results_gtr = np.empty(grid_shape, dtype=object)
+    for idx, result in enumerate(results):
+        coord = np.unravel_index(idx, grid_shape)
+        results_gtr[coord] = result
+    return results_gtr
 
 
 def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,

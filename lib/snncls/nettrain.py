@@ -50,7 +50,7 @@ class NetworkTraining(object):
 
     def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
             report=True, epochs_r=1, debug=False, early_stopping=False,
-            tol=1e-5, solver='sgd', **kwargs):
+            tol=1e-2, num_iter_stopping=5, solver='sgd', **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -69,7 +69,7 @@ class NetworkTraining(object):
         data_te : list, optional
             Test data: list of 2-tuples (X, y), same format as data_tr.
         report : bool
-            Print loss every epochs_r.
+            Print loss every epochs_r[, early stopping].
         epochs_r : int
             Num. epochs per report.
         debug : bool
@@ -81,6 +81,10 @@ class NetworkTraining(object):
             at least tol (relative amount, proportional to initial te_loss)
             for two consecutive epochs, then convergence is considered and
             learning stops.
+        num_iter_stopping : int
+            Number of epochs checked for early stopping. If the test loss
+            doesn't improve by at least tol on one of these consecutive epochs,
+            then network training is stopped.
         solver : str
             Choices: 'sgd' (default), 'rmsprop', 'adam'.
 
@@ -134,10 +138,6 @@ class NetworkTraining(object):
 #                              for w in self.w]
         if data_te is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
-            # Initial test loss for early stopping
-            if early_stopping:
-                te_loss0 = self.loss(data_te)
-#                print "Test loss\t\t{0:.3f}".format(te_loss0)
 
         # === Training ====================================================== #
 
@@ -171,13 +171,14 @@ class NetworkTraining(object):
             if data_te is not None:
                 rec['te_loss'][j] = self.loss(data_te)
                 # Early stopping
-                if early_stopping and j > 1:
-                    te_losses = rec['te_loss'][j-2:j+1]
-                    delta_losses = np.diff(te_losses) / te_loss0
+                if early_stopping and j > num_iter_stopping - 1:
+                    te_losses = rec['te_loss'][j-num_iter_stopping:j+1]
+                    delta_losses = np.diff(te_losses)
                     cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
                     if not cond.any():
-                        print("Stop Epoch {0}\t\t{1:.3f}".format(j,
-                              rec['tr_loss'][j]))
+                        if report:
+                            print("Stop Epoch {0}\t\t{1:.3f}".format(j,
+                                  rec['tr_loss'][j]))
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
