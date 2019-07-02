@@ -17,6 +17,8 @@ from argparse import Namespace
 
 import numpy as np
 
+from snncls.decorators import deprecated
+
 
 def args_map(worker_func, args, prm_labels=None, report=True):
     """
@@ -25,6 +27,9 @@ def args_map(worker_func, args, prm_labels=None, report=True):
     # Sweeped parameters
     if prm_labels is not None:
         prm_vals = [vars(args)[k] for k in prm_labels]
+        for vals in prm_vals:
+            if len(vals) == 0:
+                raise ValueError('No sweeped prms.')
     else:
         prm_vals = [[None]]
     grid_shape = tuple([len(i) for i in prm_vals])
@@ -91,6 +96,7 @@ def args_map(worker_func, args, prm_labels=None, report=True):
     return results_gtr
 
 
+@deprecated
 def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
              num_runs=1, report=True, num_proc=None):
     """
@@ -155,6 +161,7 @@ def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
     return results_gtr
 
 
+@deprecated
 def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
                 num_runs=1, report=True, num_proc=None):
     """
