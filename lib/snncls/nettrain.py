@@ -5,9 +5,7 @@ Created on Jun 2017
 
 @author: BG
 
-Base class for network training.
-
-TODO: Set this class to contain rather than inherit a network.
+Base class for network training and data classification.
 """
 
 from __future__ import division
@@ -19,14 +17,16 @@ from snncls import network, learnwindow
 from snncls.parameters import ParamSet
 
 
-class NetworkTraining(network.Network):
+class NetworkTraining(object):
     """
-    Abstract network training class.
+    Abstract network training class. Expected to be compatible with any output
+    cost function.
     """
     def __init__(self, sizes, param, LearnWindow=learnwindow.PSPWindow,
-                 **kwargs):
+                 Network=network.Network, **kwargs):
         """
         Set network learning parameters and learning window.
+        Contains spiking neural network with no conduction delays as default.
         Log average firing rate per epoch by default.
 
         Inputs
@@ -41,13 +41,16 @@ class NetworkTraining(network.Network):
         LearnWindow: class
             Define pre / post spiking correlation window for weight updates.
         """
-        super(NetworkTraining, self).__init__(sizes, param, **kwargs)
-        self.eta = param.net['eta0'] / self.sizes[0]
+        # Contain network
+        self.net = Network(sizes, param, **kwargs)
+        # Learning rule specific / common parameters
+        self.rng = param.rng
+        self.eta = param.net['eta0'] / sizes[0]
         self.corr = LearnWindow(param)
 
     def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
             report=True, epochs_r=1, debug=False, early_stopping=False,
-            tol=1e-5, solver='sgd', **kwargs):
+            tol=1e-2, num_iter_stopping=5, solver='sgd', **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -66,7 +69,7 @@ class NetworkTraining(network.Network):
         data_te : list, optional
             Test data: list of 2-tuples (X, y), same format as data_tr.
         report : bool
-            Print loss every epochs_r.
+            Print loss every epochs_r[, early stopping].
         epochs_r : int
             Num. epochs per report.
         debug : bool
@@ -78,6 +81,10 @@ class NetworkTraining(network.Network):
             at least tol (relative amount, proportional to initial te_loss)
             for two consecutive epochs, then convergence is considered and
             learning stops.
+        num_iter_stopping : int
+            Number of epochs checked for early stopping. If the test loss
+            doesn't improve by at least tol on one of these consecutive epochs,
+            then network training is stopped.
         solver : str
             Choices: 'sgd' (default), 'rmsprop', 'adam'.
 
@@ -100,11 +107,12 @@ class NetworkTraining(network.Network):
         # Learning rate schedule
         assert solver in ['sgd', 'rmsprop', 'adam']
         svr_prms = ParamSet({})
+        weights = self.net.get_weights()
         if solver == 'rmsprop':
             # grad_w_av_sq : EMA of squared gradients
             # decay : decay rate; alpha : lrate; epsilon : numerical stability
             svr_prms.update({'grad_w_av_sq': [np.zeros(w.shape) for
-                                              w in self.w],
+                                              w in weights],
                              'decay': 0.9,
                              'alpha': 0.1,
                              'epsilon': 1e-8,
@@ -114,9 +122,9 @@ class NetworkTraining(network.Network):
             # v : 2nd moments (uncentered variance / EMA of squared gradients)
             # betas : decay terms; alpha : lrate; epsilon : numerical stability
             svr_prms.update({'m': [np.zeros(w.shape) for
-                                   w in self.w],
+                                   w in weights],
                              'v': [np.zeros(w.shape) for
-                                   w in self.w],
+                                   w in weights],
                              'betas': (0.9, 0.999),
                              'alpha': 0.1,
                              'epsilon': 1e-8})
@@ -124,16 +132,12 @@ class NetworkTraining(network.Network):
         # Recordings
         rec = {'tr_loss': np.full(epochs, np.nan)}
         if debug:
-            rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in self.w]
+            rec['w'] = [np.full((epochs,) + w.shape, np.nan) for w in weights]
 #            if solver == 'rmsprop':
 #                rec['gas'] = [np.full((epochs,) + w.shape, np.nan)
 #                              for w in self.w]
         if data_te is not None:
             rec['te_loss'] = np.full(epochs, np.nan)
-            # Initial test loss for early stopping
-            if early_stopping:
-                te_loss0 = self.loss(data_te)
-#                print "Test loss\t\t{0:.3f}".format(te_loss0)
 
         # === Training ====================================================== #
 
@@ -156,8 +160,9 @@ class NetworkTraining(network.Network):
                                        svr_prms=svr_prms, iters=iters)
             # Debugging recordings
             if debug:
-                for l in xrange(self.num_layers-1):
-                    rec['w'][l][j] = self.w[l].copy()
+                weights = self.net.get_weights()
+                for l, w in enumerate(weights):
+                    rec['w'][l][j] = w
 #                if solver == 'rmsprop':
 #                    for l in xrange(self.num_layers-1):
 #                        rec['gas'][l][j] = svr_prms['grad_w_av_sq'][l].copy()
@@ -166,12 +171,14 @@ class NetworkTraining(network.Network):
             if data_te is not None:
                 rec['te_loss'][j] = self.loss(data_te)
                 # Early stopping
-                if early_stopping and j > 1:
-                    te_losses = rec['te_loss'][j-2:j+1]
-                    delta_losses = np.diff(te_losses) / te_loss0
+                if early_stopping and j > num_iter_stopping - 1:
+                    te_losses = rec['te_loss'][j-num_iter_stopping:j+1]
+                    delta_losses = np.diff(te_losses)
                     cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
                     if not cond.any():
-                        print "Stop Epoch {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
+                        if report:
+                            print("Stop Epoch {0}\t\t{1:.3f}".format(j,
+                                  rec['tr_loss'][j]))
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
@@ -205,14 +212,15 @@ class NetworkTraining(network.Network):
         # Accumulated gradients of cost function w.r.t. weights
         grad_w_acc = self.grad_accum(mini_batch)
         # Apply accumulated weight changes
+        weights = self.net.get_weights()
         if solver == 'sgd':
-            self.w = [w - self.eta / len(mini_batch) * dC
-                      for w, dC in zip(self.w, grad_w_acc)]
+            weights = [w - self.eta / len(mini_batch) * dC
+                       for w, dC in zip(weights, grad_w_acc)]
         elif solver == 'rmsprop':
             for idx, dC in enumerate(grad_w_acc):
                 prms.grad_w_av_sq[idx] = prms.decay * \
                     prms.grad_w_av_sq[idx] + (1. - prms.decay) * dC**2
-                self.w[idx] -= \
+                weights[idx] -= \
                     prms.alpha / np.sqrt(prms.grad_w_av_sq[idx] +
                                          prms.epsilon) * dC
         elif solver == 'adam':
@@ -224,16 +232,17 @@ class NetworkTraining(network.Network):
                     (1. - prms.betas[1]) * dC**2
                 m_unbias = prms.m[idx] / (1. - prms.betas[0]**iters)
                 v_unbias = prms.v[idx] / (1. - prms.betas[1]**iters)
-                self.w[idx] -= (prms.alpha * m_unbias) / \
+                weights[idx] -= (prms.alpha * m_unbias) / \
                     (np.sqrt(v_unbias) + prms.epsilon)
-        self.clip_weights()
+        self.net.set_weights(weights)
 
     def grad_accum(self, mini_batch):
         """
         Apply backprop to each sample in a mini_batch of data and return list
         of accumulated weight gradients for each layer.
         """
-        grad_w_acc = [np.zeros(w.shape) for w in self.w]
+        weights = self.net.get_weights()
+        grad_w_acc = [np.zeros(w.shape) for w in weights]
         for X, y in mini_batch:
             grad_w = self.backprop(X, y)
             grad_w_acc = [dC + dC_x for dC, dC_x in

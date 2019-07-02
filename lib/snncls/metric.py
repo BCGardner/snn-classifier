@@ -48,7 +48,7 @@ def distance_spatio(spike_trains, spike_trains_ref, dist_metric=van_rossum):
     return spatio_dist / n_trains
 
 
-def confusion_matrix(net, data, raw=True):
+def confusion_matrix(clf, data, raw=True):
     """
     Measure confusion matrix of a network on provided data.
     Data is a list of 2-tuples [(X0, y0), ...], where X contains network
@@ -60,7 +60,7 @@ def confusion_matrix(net, data, raw=True):
     conf_mat = np.zeros((num_classes, num_classes + 1))
     for X, y in data:
         label = np.argmax(y)  # True class label
-        predict = net.predict(X)  # Predicted class label
+        predict = clf.predict(X)  # Predicted class label
         # Given a prediction by the network
         if not np.isnan(predict):
             conf_mat[label, predict] += 1.

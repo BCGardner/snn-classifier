@@ -22,12 +22,12 @@ class LearnWindow(object):
         """
         raise NotImplementedError
 
-    def causal_reduce(self, post_spikes, pre_spikes):
+    def causal_reduce(self, post_spikes, pre_spikes, delays=None):
         """
         Summed traces at each post-spike time, due to all pre-spikes.
         Outputs reduced causal-correlation traces, shape (num_post).
         """
-        return np.sum(self.causal(post_spikes, pre_spikes), 1)
+        return np.sum(self.causal(post_spikes, pre_spikes, delays), -1)
 
     def double_conv_psp(self, spikes_o, spikes_h, psp_in):
         raise NotImplementedError
@@ -42,8 +42,9 @@ class EXPWindow(LearnWindow):
     def __init__(self, param):
         self.tau_m = param.cell['tau_m']
 
-    def causal(self, post_spikes, pre_spikes):
+    def causal(self, post_spikes, pre_spikes, delays=None):
         """
+        TODO: Implement delays.
         Causal-correlation traces at each [post-spike] due to most recent
         [pre-spike]. Outputs correlations array, shape (num_post, 1).
         """
@@ -71,9 +72,10 @@ class PSPWindow(LearnWindow):
         self.tau_m = param.cell['tau_m']
         self.tau_s = param.cell['tau_s']
 
-    def causal(self, post_spikes, pre_spikes):
+    def causal(self, post_spikes, pre_spikes, delays=None):
         """
         Causal-correlation traces at each [post-spike] due to each [pre-spike].
+        Optionally also w.r.t. each subconnection delay.
 
         Inputs
         ------
@@ -81,13 +83,20 @@ class PSPWindow(LearnWindow):
             Sequence of postsynaptic spike times.
         pre_spikes : array, shape (num_spikes,)
             Sequence of presynaptic spike times.
+        delays : array, optional, shape (num_subs,)
+            Conduction delay times for each pre_spike.
 
         Output
         ------
-        return : array, shape (num_post, num_pre)
+        return : array, shape (num_post[, num_subs], num_pre)
             Causal-correlation traces.
         """
-        lags = post_spikes[:, np.newaxis] - pre_spikes[np.newaxis, :]
+        if delays is not None:
+            # Epsilon arguments : array, shape (num_post, num_subs, num_pre)
+            lags = post_spikes[:, np.newaxis, np.newaxis] - \
+                (pre_spikes + delays[:, np.newaxis])
+        else:
+            lags = post_spikes[:, np.newaxis] - pre_spikes[np.newaxis, :]
         u = (lags > 0.).astype(float)
         traces = self.epsilon_0 * (np.exp(-lags / self.tau_m) -
                                    np.exp(-lags / self.tau_s)) * u
@@ -120,3 +129,4 @@ class PSPWindow(LearnWindow):
         corr_oh = corr_oh[:, np.newaxis, :]
         psp_in = psp_in[np.newaxis, :, :]  # Prep for broadcasting
         return np.sum(corr_oh * psp_in, 2)
+#        return np.dot(corr_oh, psp_in.T)

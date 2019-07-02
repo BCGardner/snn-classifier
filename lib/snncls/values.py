@@ -21,7 +21,7 @@ class SimParam(object):
         - network / regularisation params
         - pattern statistics
     """
-    def __init__(self, dt=0.1, seed=None):
+    def __init__(self, dt=0.1, seed=None, **kwargs):
         # === Common parameters ============================================= #
         self.dt = dt         # Time step (ms)
         self.seed = seed     # Seed for initialisation
@@ -47,11 +47,16 @@ class SimParam(object):
         self.pattern = ParamSet({'neurons_f': 12,   # num. encoding nrns
                                  'beta': 1.5,       # width receptive fields
                                  'duration': 40.})  # sim. runtime per pattern
+        # Update defaults
+        self.update(**kwargs)
 
     def update(self, **kwargs):
         """
         Update parameter sets for matching keys, update derived parameters.
         """
+        # Aliases
+        if 'w_lim' in kwargs:
+            kwargs['w_bounds'] = (-kwargs['w_lim'], kwargs['w_lim'])
         self.cell.overwrite(**kwargs)
         self.net.overwrite(**kwargs)
         self.pattern.overwrite(**kwargs)

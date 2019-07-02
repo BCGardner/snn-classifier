@@ -5,28 +5,21 @@ Created on Mar 2017
 
 @author: BG
 
-Define multilayer network object, used for network training.
-
-TODO: Implement two network types and have them contained rather than inherited
-by a training class:
-    1) LIF-type (optimised for large datasets)
-    2) general-type (works with any provided neuron type))
+Define multilayer network object.
 """
 
 from __future__ import division
 
 import numpy as np
 
-from snncls import escape_noise, preprocess
+from snncls import netbase
 
 
-class Network(object):
+class Network(netbase.NetBase):
     """
-    Feed-forward spiking neural network with no conduction delays. Subthreshold
-    neuronal dynamics are governed by LIF model in all layers.
+    Spiking neural network with no conduction delays.
     """
-    def __init__(self, sizes, param, weights=None,
-                 EscapeRate=escape_noise.ExpRate):
+    def __init__(self, sizes, param, weights=None, **kwargs):
         """
         Randomly initialise weights of neurons in each layer.
 
@@ -37,32 +30,13 @@ class Network(object):
         param : container
             Using cell, pattern, net and common parameters.
         weights : list, optional
-            List of initial weight values of network.
-        EscapeRate : class
-            Hidden layer neuron firing density.
+            Sets initial network weights. List of len (num_layers-1), where
+            each element is an array of shape (num_post, num_pre).
         """
-        self.sizes = sizes  # No. neurons in each layer
-        self.num_layers = len(sizes)  # Total num. layers (incl. input)
-        self.dt = param.dt  # Sim. time elapsed per iter
-        self.duration = param.pattern['duration']  # Default sim. duration
-        self.rng = param.rng
-        # Parameters
-        self.cell_params = param.cell
-        self.w_h_init = param.net['w_h_init']
-        self.w_o_init = param.net['w_o_init']
-        self.w_bounds = param.net['w_bounds']
-        # Hidden neuron model
-        self.neuron_h = EscapeRate(param.cell['theta'])
-        # Optimisations
-        self.decay_m = param.decay_m
-        self.decay_s = param.decay_s
-        # Look up tables for default sim. durations
-        times = np.arange(0., self.duration, self.dt)
-        self.lut = {'psp': preprocess.psp_reduce(times, np.array([0.]),
-                                                 **self.cell_params),
-                    'refr': preprocess.refr_reduce(times, np.array([0.]),
-                                                   **self.cell_params)}
-        # Initialise network state
+        super(Network, self).__init__(sizes, param, **kwargs)
+        # Prototype weights
+        self.w = [np.empty((i, j))
+                  for i, j in zip(self.sizes[1:], self.sizes[:-1])]
         self.reset(weights=weights)
 
     def reset(self, rng_st=None, weights=None):
@@ -78,28 +52,20 @@ class Network(object):
         # Set weights to a given value, otherwise randomly intialise according
         # to a uniform distribution
         if weights is not None:
-            # Check input weight dims match network sizes
-            w_shapes = zip(self.sizes[1:], self.sizes[:-1])
-            assert len(weights) == len(w_shapes)
-            for idx, weight in enumerate(weights):
-                assert np.shape(weight) == w_shapes[idx]
-            self.w = [w.copy().astype(float) for w in weights]
-            # Weight bound constraints
-            for w in self.w:
-                assert np.all(w >= self.w_bounds[0])
-                assert np.all(w <= self.w_bounds[1])
+            self.set_weights(weights, assert_bounds=True)
         else:
-            self.w = []
+            weights = []
             # Hidden layers
             for i, j in zip(self.sizes[1:-1], self.sizes[:-2]):
-                self.w.append(self.rng.uniform(*self.w_h_init, size=(i, j)))
+                weights.append(self.rng.uniform(*self.w_h_init, size=(i, j)))
             # Output layer
-            self.w.append(self.rng.uniform(*self.w_o_init,
-                                           size=self.sizes[-1:-3:-1]))
-            # Clip out-of-bound weights
-            self.clip_weights()
+            weights.append(self.rng.uniform(*self.w_o_init,
+                                            size=self.sizes[-1:-3:-1]))
+            # Set values
+            self.set_weights(weights)
 
-    def simulate(self, stimulus, latency=False, debug=False):
+    def simulate(self, stimulus, latency=False, return_psps=False,
+                 debug=False):
         """
         Network activity in response to an input stimulus driving the
         network. Based on iterative procedure to determine spike times.
@@ -115,6 +81,9 @@ class Network(object):
                 - set of spike trains: list, len (num_inputs)
         latency : bool, optional
             Restrict to just finding first output spikes.
+        return_psps : bool
+            Return PSPs evoked due to each layer, excluding output layer, each
+            with shape (num_nrns, num_iter).
         debug : bool, optional
             Record network dynamics for debugging.
 
@@ -122,10 +91,11 @@ class Network(object):
         -------
         spike_trains_l : list
             List of neuron spike trains, for layers l > 0.
+        psps : list, optional
+            List of PSPs evoked, for layers l < L.
         rec : dict, optional
             Debug recordings containing
-            {psps evoked from hidden neurons 'psp', potentials 'u',
-             bool spike trains 'S'}.
+            {'psp' as list of evoked PSPs, 'u' as list of potentials}.
         """
         # === Initialise ==================================================== #
 
@@ -135,15 +105,15 @@ class Network(object):
         # Ensure pattern duration is compatible with look up tables
         assert num_iter == len(self.lut['psp'])
 
-        # Debug
+        # Record
+        rec = {}
+        if return_psps:
+            rec['psp'] = [np.empty((i, num_iter))
+                          for i in self.sizes[:-1]]
+            rec['psp'][0] = psp_inputs
         if debug:
-            rec = {'psp': [np.empty((i, num_iter))
-                           for i in self.sizes[1:]],
-                   'u': [np.empty((i, num_iter))
-                         for i in self.sizes[1:]],
-                   'S': [np.empty((i, num_iter), dtype=int)
-                         for i in self.sizes[1:]],
-                   'smpls': []}
+            rec['u'] = [np.empty((i, num_iter))
+                        for i in self.sizes[1:]]
         # Spike trains for layers: l > 0
         spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
                           for i in xrange(1, self.num_layers)]
@@ -176,10 +146,11 @@ class Network(object):
                         num_spikes += 1
                     else:
                         break
+            # Record
+            if return_psps:
+                rec['psp'][l+1] = psps
             if debug:
                 rec['u'][l] = potentials
-                rec['psp'][l] = psps
-                rec['smpls'].append(unif_samples)
         # Output responses
         potentials = np.dot(self.w[-1], psps)
         # PSPs evoked by this layer
@@ -205,15 +176,17 @@ class Network(object):
                     break
         if debug:
             rec['u'][-1] = potentials
-            rec['psp'][-1] = psps
 
         if debug:
             return spike_trains_l, rec
+        elif return_psps:
+            return spike_trains_l, rec['psp']
         else:
             return spike_trains_l
 
     def simulate_steps(self, psp_inputs, debug=False):
         """
+        TODO: cleanup
         Network activity in response to an input pattern presented to the
         network.
         Profiled at t = 3.1 s (iris, defaults (29/08/18), 20 hidden nrns).
@@ -305,28 +278,3 @@ class Network(object):
             return spike_trains_l, rec
         else:
             return spike_trains_l
-
-    def stimulus_as_psps(self, stimulus):
-        """
-        Sets a stimulus as an array of evoked psps.
-        Stimulus: list / array -> psps: array, shape (num_nrns, num_iter).
-        """
-        if type(stimulus) is list:
-            # Presents as a list of spike trains, len (num_nrns)
-            return preprocess.pattern2psps(stimulus, self.dt, self.duration,
-                                           **self.cell_params)
-        else:
-            # Already an array of evoked psps.
-            return stimulus
-
-    def times2steps(self, times):
-        """
-        Convert times to time_steps.
-        """
-        return np.round(times / self.dt).astype(int)
-
-    def clip_weights(self):
-        """
-        Clip out-of-bound weights in each layer.
-        """
-        [np.clip(w, self.w_bounds[0], self.w_bounds[1], w) for w in self.w]

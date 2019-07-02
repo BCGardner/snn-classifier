@@ -63,3 +63,19 @@ def load_data_file(data_id):
         return np.array(data, dtype=float), np.array(labels, dtype=int)
     else:
         return hp.load_data(fname)
+
+
+def load_subset(data_id, num_cases, randomise=False, rng=None):
+    """
+    Subsample a loaded dataset. Either the first num_cases are returned, or
+    a randomised set.
+    """
+    # Setup
+    if not isinstance(rng, int):
+        rng = np.random.RandomState(rng)
+    # Load data and subsample[, randomised order of first num_cases]
+    X, y = load_data_file(data_id)
+    idxs = np.arange(len(X))
+    if randomise:
+        rng.shuffle(idxs)
+    return X[idxs][:num_cases], y[idxs][:num_cases]
