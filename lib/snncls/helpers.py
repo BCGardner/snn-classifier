@@ -15,6 +15,8 @@ import os
 
 import numpy as np
 
+from snncls import metric
+
 
 def get_basename(filename, return_ext=False):
     """
@@ -42,6 +44,45 @@ def load_data(path):
     with gzip.open(path, 'rb') as f:
         data = pkl.load(f)
     return data
+
+
+def evaluate_clf(clf, data_tr, data_te=None, return_mats=True, report=False):
+    """
+    Evaluate classifier training[, test] accuracies[, and confusion matrices].
+
+    Inputs
+    ------
+    clf : object
+        Network classifier with prediction and evaluate methods.
+    data_tr : list
+        Training data as list of 2-tuples: [(X1, y1), ...].
+    data_te : list, optional
+        Test data as list of 2-tuples: [(X1, y1), ...].
+    return_mats : bool
+        Evaluate network confusion matrices.
+    report : bool
+        Report mean training[,test] accuracies.
+
+    Output
+    ------
+    return : dict
+        Recorded training[, test] accuracies.
+    """
+    rec = {}
+    # Evaluate on train / test data w.r.t. all classes (error rate %)
+    rec['tr_err'] = clf.evaluate(data_tr)
+    if data_te is not None:
+        rec['te_err'] = clf.evaluate(data_te)
+    # Evaluate on train and test data w.r.t. each class (accuracy %)
+    rec['mat_tr'] = metric.confusion_matrix(clf, data_tr, False)
+    if data_te is not None:
+        rec['mat_te'] = metric.confusion_matrix(clf, data_te, False)
+    # Report values
+    if report:
+        print 'Train accuracy:\t{0:.1f} %'.format(100. - rec['tr_err'])
+        if data_te is not None:
+            print 'Test accuracy:\t{0:.1f} %'.format(100. - rec['te_err'])
+    return rec
 
 
 def mean_accs(data, k='tr_err'):
