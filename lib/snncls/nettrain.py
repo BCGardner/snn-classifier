@@ -14,7 +14,7 @@ from argparse import Namespace
 import numpy as np
 
 from snncls import network, learnwindow
-from snncls.parameters import ParamSet
+import snncls.solver
 
 
 class NetworkTraining(object):
@@ -50,7 +50,8 @@ class NetworkTraining(object):
 
     def SGD(self, data_tr, epochs, mini_batch_size, data_te=None,
             report=True, epochs_r=1, debug=False, early_stopping=False,
-            tol=1e-2, num_iter_stopping=5, solver='sgd', **kwargs):
+            tol=1e-2, num_iter_stopping=5, solver='sgd', warmstart=False,
+            **kwargs):
         """
         Stochastic gradient descent - present training data in mini batches,
         and updates network weights.
@@ -87,6 +88,8 @@ class NetworkTraining(object):
             then network training is stopped.
         solver : str
             Choices: 'sgd' (default), 'rmsprop', 'adam'.
+        warmstart : bool
+            Optionally initialise solver state on subset of training data.
 
         Outputs
         -------
@@ -104,31 +107,20 @@ class NetworkTraining(object):
         # Prepare data
         data_tr = list(data_tr)  # Copy list of data samples
         tr_cases = len(data_tr)
-        # Learning rate schedule
-        assert solver in ['sgd', 'rmsprop', 'adam']
-        svr_prms = ParamSet({})
+
+        # LRate schedule
+        svr_dict = {'sgd': snncls.solver.ConstLR,
+                    'rmsprop': snncls.solver.RMSProp,
+                    'adam': snncls.solver.Adam}
         weights = self.net.get_weights()
-        if solver == 'rmsprop':
-            # grad_w_av_sq : EMA of squared gradients
-            # decay : decay rate; alpha : lrate; epsilon : numerical stability
-            svr_prms.update({'grad_w_av_sq': [np.zeros(w.shape) for
-                                              w in weights],
-                             'decay': 0.9,
-                             'alpha': 0.1,
-                             'epsilon': 1e-8,
-                             'warmstart': False})
-        elif solver == 'adam':
-            # m : 1st moments (mean / EMA of gradients)
-            # v : 2nd moments (uncentered variance / EMA of squared gradients)
-            # betas : decay terms; alpha : lrate; epsilon : numerical stability
-            svr_prms.update({'m': [np.zeros(w.shape) for
-                                   w in weights],
-                             'v': [np.zeros(w.shape) for
-                                   w in weights],
-                             'betas': (0.9, 0.999),
-                             'alpha': 0.1,
-                             'epsilon': 1e-8})
-        svr_prms.overwrite(**kwargs)
+        # TODO make eta an svr prm
+        svr = svr_dict[solver](weights, eta=self.eta, **kwargs)
+        if warmstart:
+            self.rng.shuffle(data_tr)
+            mini_batch = data_tr[:mini_batch_size]
+            grad_w_acc = self.grad_accum(mini_batch)
+            svr.warmup(grad_w_acc)
+
         # Recordings
         rec = {'tr_loss': np.full(epochs, np.nan)}
         if debug:
@@ -141,23 +133,13 @@ class NetworkTraining(object):
 
         # === Training ====================================================== #
 
-        # Warm start for rmsprop
-        if solver == 'rmsprop' and svr_prms['warmstart']:
-            # Ensure stratified samples
-            self.rng.shuffle(data_tr)
-            mini_batch = data_tr[:mini_batch_size]
-            # Estimate initial squared gradients
-            grad_w_acc = self.grad_accum(mini_batch)
-            svr_prms['grad_w_av_sq'] = [dC**2 for dC in grad_w_acc]
         for j in xrange(epochs):
             # Partition data into mini batches
             self.rng.shuffle(data_tr)
             mini_batches = [data_tr[k:k+mini_batch_size]
                             for k in xrange(0, tr_cases, mini_batch_size)]
-            for idx, mini_batch in enumerate(mini_batches):
-                iters = idx + j * len(mini_batches)
-                self.update_mini_batch(mini_batch, solver=solver,
-                                       svr_prms=svr_prms, iters=iters)
+            for mini_batch in mini_batches:
+                self.update_mini_batch(mini_batch, solver=svr)
             # Debugging recordings
             if debug:
                 weights = self.net.get_weights()
@@ -190,8 +172,7 @@ class NetworkTraining(object):
 #                        self.evaluate(data_te), te_cases)
         return rec
 
-    def update_mini_batch(self, mini_batch, solver='sgd', svr_prms={},
-                          iters=None):
+    def update_mini_batch(self, mini_batch, solver):
         """
         Update network weights based on a mini batch of training data.
 
@@ -200,40 +181,17 @@ class NetworkTraining(object):
         mini_batch : list
             Training data: list of 2-tuples (X, y), where X is input data,
             and y a one-hot encoded class label.
-        solver : str, optional
-            Choices: 'sgd' (default), 'rmsprop', 'adam'.
-        svr_prms : dict, optional
-            Contains solver-specific parameters.
-        iters : int, optional
-            Iterations completed.
+        solver : object
+            Learning schedule used to compute weight changes from grad_w.
         """
-        # Collect solver parameters
-        prms = Namespace(**svr_prms)
         # Accumulated gradients of cost function w.r.t. weights
         grad_w_acc = self.grad_accum(mini_batch)
+        # Weight changes per layer
+        delta_weights = solver.weight_changes(grad_w_acc,
+                                              num_samples=len(mini_batch))
         # Apply accumulated weight changes
-        weights = self.net.get_weights()
-        if solver == 'sgd':
-            weights = [w - self.eta / len(mini_batch) * dC
-                       for w, dC in zip(weights, grad_w_acc)]
-        elif solver == 'rmsprop':
-            for idx, dC in enumerate(grad_w_acc):
-                prms.grad_w_av_sq[idx] = prms.decay * \
-                    prms.grad_w_av_sq[idx] + (1. - prms.decay) * dC**2
-                weights[idx] -= \
-                    prms.alpha / np.sqrt(prms.grad_w_av_sq[idx] +
-                                         prms.epsilon) * dC
-        elif solver == 'adam':
-            iters += 1  # Update for next iteration
-            for idx, dC in enumerate(grad_w_acc):
-                prms.m[idx] = prms.betas[0] * prms.m[idx] + \
-                    (1. - prms.betas[0]) * dC
-                prms.v[idx] = prms.betas[1] * prms.v[idx] + \
-                    (1. - prms.betas[1]) * dC**2
-                m_unbias = prms.m[idx] / (1. - prms.betas[0]**iters)
-                v_unbias = prms.v[idx] / (1. - prms.betas[1]**iters)
-                weights[idx] -= (prms.alpha * m_unbias) / \
-                    (np.sqrt(v_unbias) + prms.epsilon)
+        weights = [w + dw for w, dw in zip(self.net.get_weights(),
+                                           delta_weights)]
         self.net.set_weights(weights)
 
     def grad_accum(self, mini_batch):
