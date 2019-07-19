@@ -10,7 +10,6 @@ Base class for network training and data classification.
 
 from __future__ import division
 
-from argparse import Namespace
 import numpy as np
 
 from snncls import network, learnwindow
@@ -108,7 +107,7 @@ class NetworkTraining(object):
         data_tr = list(data_tr)  # Copy list of data samples
         tr_cases = len(data_tr)
 
-        # LRate schedule
+        # Learning schedules
         svr_dict = {'sgd': snncls.solver.ConstLR,
                     'rmsprop': snncls.solver.RMSProp,
                     'adam': snncls.solver.Adam}
@@ -153,14 +152,9 @@ class NetworkTraining(object):
             if data_te is not None:
                 rec['te_loss'][j] = self.loss(data_te)
                 # Early stopping
-                if early_stopping and j > num_iter_stopping - 1:
-                    te_losses = rec['te_loss'][j-num_iter_stopping:j+1]
-                    delta_losses = np.diff(te_losses)
-                    cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
-                    if not cond.any():
-                        if report:
-                            print("Stop Epoch {0}\t\t{1:.3f}".format(j,
-                                  rec['tr_loss'][j]))
+                if early_stopping:
+                    if stoptraining(rec['te_loss'][:j+1], num_iter_stopping,
+                                    tol, report=report):
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
@@ -229,3 +223,39 @@ class NetworkTraining(object):
 
     def loss(self, data):
         raise NotImplementedError
+
+
+def stoptraining(te_losses, num_iter_stopping=5, tol=1E-2, report=False):
+    """
+    Determine if training should be stopped based on validation losses.
+    Training continues if any loss change is negative and sufficiently
+    large, over the num. values checked.
+
+    Inputs
+    ------
+    te_losses : array, shape (iters_tr,)
+        Historic loss values on validation set, up to latest recording.
+    num_iter_stopping : int
+        Num. loss changes checked for stopping criterion.
+    tol : float
+        Stopping tolerance.
+    report : bool
+        Report if stop condition met.
+
+    Output
+    ------
+    return : bool
+        Stop signal.
+    """
+    num_iters = len(te_losses)  # Number of iters. net. has been trained for
+    if num_iters > num_iter_stopping:
+        losses_stopping = te_losses[-(num_iter_stopping+1):]
+        delta_losses = np.diff(losses_stopping)
+        # Check if any conditions for continuing are satisfied
+        cond = (delta_losses < 0.) & (np.abs(delta_losses) > tol)
+        if not cond.any():
+            if report:
+                print("Stop after {0} iterations\t\t{1:.3f}".format(num_iters,
+                      te_losses[-1]))
+            return True
+    return False
