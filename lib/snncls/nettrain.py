@@ -166,13 +166,104 @@ class NetworkTraining(object):
 #                        self.evaluate(data_te), te_cases)
         return rec
 
+    def SGD_iter(self, data_tr, num_iter, mini_batch_size=150, data_te=None,
+                 report=True, num_iter_r=1, debug=False, early_stopping=False,
+                 tol=1e-2, num_iter_stopping=5, solver='sgd', warmstart=False,
+                 **kwargs):
+        """
+        Stochastic gradient descent - present training data in mini batches and
+        update network weights. This method records values after each iteration
+        / mini_batch presented to the network. Early stopping is determined
+        based on recorded values.
+
+        Inputs
+        ------
+        num_iter : int
+            Maximum num. iterations network trained on data.
+        num_iter_r : int
+            Num. iters to each recording.
+        num_iter_stopping : int
+            Num. recorded iters for stop condition.
+        """
+        # === Rand. select subset of data  ================================== #
+
+        def rand_subset(data, num_cases, size=mini_batch_size):
+            idxs = self.rng.choice(num_cases, size=size,
+                                   replace=False)
+            return data[idxs]
+
+        # === Inititalise =================================================== #
+
+        # Prepare data
+        data_tr = np.array(data_tr)
+        tr_cases = len(data_tr)
+        # Estimates based on subsampled training data
+        num_est_tr = np.around(0.05 * tr_cases).astype(int)
+        mini_batch = rand_subset(data_tr, tr_cases, size=num_est_tr)
+        # Initial weights
+        weights = self.net.get_weights()
+
+        # Setup recordings containers
+        num_r = num_iter // num_iter_r + 1  # Num. recorded iters. (incl. init)
+        rec = {'tr_loss': np.full(num_r, np.nan)}
+        if debug:
+            rec['w'] = [np.full((num_r,) + w.shape, np.nan)
+                        for w in weights]
+        if data_te is not None:
+            rec['te_loss'] = np.full(num_r, np.nan)
+        # Estimate initial losses
+        rec['tr_loss'][0] = self.loss(mini_batch)
+        if data_te is not None:
+            rec['te_loss'][0] = self.loss(data_te)
+        # Initial weights
+        if debug:
+            for l, w in enumerate(weights):
+                rec['w'][l][0] = w
+
+        # Learning schedules
+        svr_dict = {'sgd': snncls.solver.ConstLR,
+                    'rmsprop': snncls.solver.RMSProp,
+                    'adam': snncls.solver.Adam}
+        svr = svr_dict[solver](weights, eta=self.eta, **kwargs)
+        if warmstart:
+            grad_w_acc = self.grad_accum(mini_batch)
+            svr.warmup(grad_w_acc)
+
+        # === Training ====================================================== #
+
+        for j in xrange(num_iter):
+            # Randomly select subset of training data without replacement
+            mini_batch = rand_subset(data_tr, tr_cases, size=mini_batch_size)
+            self.update_mini_batch(mini_batch, solver=svr)
+            # Report / record values
+            if not (j + 1) % num_iter_r:
+                # Record iterative weight updates
+                if debug:
+                    weights = self.net.get_weights()
+                    for l, w in enumerate(weights):
+                        rec['w'][l][j+1] = w
+                # Determine loss on training / test data
+                rec['tr_loss'][j+1] = self.loss(mini_batch)
+                if data_te is not None:
+                    rec['te_loss'][j+1] = self.loss(data_te)
+                    # Early stopping
+                    if early_stopping:
+                        if stoptraining(rec['te_loss'][:j+2],
+                                        num_iter_stopping, tol, report=report):
+                            break
+                # Report training / test error rates per epoch
+                if report:
+                    print "Iters: {0}\t\t{1:.3f}".format(j+1,
+                                                         rec['tr_loss'][j+1])
+        return rec
+
     def update_mini_batch(self, mini_batch, solver):
         """
         Update network weights based on a mini batch of training data.
 
         Inputs
         ------
-        mini_batch : list
+        mini_batch : list or array
             Training data: list of 2-tuples (X, y), where X is input data,
             and y a one-hot encoded class label.
         solver : object
