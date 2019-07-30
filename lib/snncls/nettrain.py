@@ -212,13 +212,14 @@ class NetworkTraining(object):
         if data_te is not None:
             rec['te_loss'] = np.full(num_r, np.nan)
         # Estimate initial losses
-        rec['tr_loss'][0] = self.loss(mini_batch)
+        idx_r = 0
+        rec['tr_loss'][idx_r] = self.loss(mini_batch)
         if data_te is not None:
-            rec['te_loss'][0] = self.loss(data_te)
+            rec['te_loss'][idx_r] = self.loss(data_te)
         # Initial weights
         if debug:
             for l, w in enumerate(weights):
-                rec['w'][l][0] = w
+                rec['w'][l][idx_r] = w
 
         # Learning schedules
         svr_dict = {'sgd': snncls.solver.ConstLR,
@@ -237,24 +238,25 @@ class NetworkTraining(object):
             self.update_mini_batch(mini_batch, solver=svr)
             # Report / record values
             if not (j + 1) % num_iter_r:
+                idx_r += 1
                 # Record iterative weight updates
                 if debug:
                     weights = self.net.get_weights()
                     for l, w in enumerate(weights):
-                        rec['w'][l][j+1] = w
+                        rec['w'][l][idx_r] = w
                 # Determine loss on training / test data
-                rec['tr_loss'][j+1] = self.loss(mini_batch)
+                rec['tr_loss'][idx_r] = self.loss(mini_batch)
                 if data_te is not None:
-                    rec['te_loss'][j+1] = self.loss(data_te)
+                    rec['te_loss'][idx_r] = self.loss(data_te)
                     # Early stopping
                     if early_stopping:
-                        if stoptraining(rec['te_loss'][:j+2],
+                        if stoptraining(rec['te_loss'][:idx_r+1],
                                         num_iter_stopping, tol, report=report):
                             break
                 # Report training / test error rates per epoch
                 if report:
                     print "Iters: {0}\t\t{1:.3f}".format(j+1,
-                                                         rec['tr_loss'][j+1])
+                                                         rec['tr_loss'][idx_r])
         return rec
 
     def update_mini_batch(self, mini_batch, solver):
