@@ -51,7 +51,7 @@ def load_data_transform(data_id, param, transform=pp.transform_data,
 
 def load_data_file(data_id):
     """
-    Loads a data file from ../data/.
+    Loads a data file from ../data/ for model training / validation / test.
     """
     # Load dataset
     data_path = os.path.join(os.path.dirname(__file__), '../data')
@@ -63,6 +63,17 @@ def load_data_file(data_id):
         return np.array(data, dtype=float), np.array(labels, dtype=int)
     else:
         return hp.load_data(fname)
+
+
+def load_mnist_testing():
+    """
+    Loads mnist test data from ../data/ for final model evaluation.
+    """
+    # Load dataset
+    data_path = os.path.join(os.path.dirname(__file__), '../data/mnist')
+    mndata = MNIST(data_path)
+    data, labels = mndata.load_testing()
+    return np.array(data, dtype=float), np.array(labels, dtype=int)
 
 
 def load_subset(data_id, num_cases, randomise=False, rng=None):
