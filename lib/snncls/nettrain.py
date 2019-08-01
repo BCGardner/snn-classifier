@@ -198,8 +198,7 @@ class NetworkTraining(object):
         data_tr = np.array(data_tr)
         tr_cases = len(data_tr)
         # Estimates based on subsampled training data
-        num_est_tr = np.around(0.05 * tr_cases).astype(int)
-        mini_batch = rand_subset(data_tr, tr_cases, size=num_est_tr)
+        mini_batch = rand_subset(data_tr, tr_cases, size=mini_batch_size)
         # Initial weights
         weights = self.net.get_weights()
 
