@@ -16,6 +16,7 @@ import os
 import numpy as np
 
 from snncls import metric
+from snncls.decorators import deprecated
 
 
 def get_basename(filename, return_ext=False):
@@ -46,6 +47,7 @@ def load_data(path):
     return data
 
 
+@deprecated
 def evaluate_clf(clf, data_tr, data_te=None, return_mats=True, report=False):
     """
     Evaluate classifier training[, test] accuracies[, and confusion matrices].
