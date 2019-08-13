@@ -48,16 +48,33 @@ def distance_spatio(spike_trains, spike_trains_ref, dist_metric=van_rossum):
     return spatio_dist / n_trains
 
 
-def confusion_matrix(clf, data, raw=True):
+def confusion_matrix(clf, data, raw=False, return_acc=False):
     """
-    Measure confusion matrix of a network on provided data.
-    Data is a list of 2-tuples [(X0, y0), ...], where X contains network
-    stimulus and y is the target output vector. Raw returns counts per matrix
-    element. Final column is the null class, containing counts for no spike.
+    Determine confusion matrix of a classifier on provided data.
+
+    Inputs
+    ------
+    clf : object
+        Classifier with predict method.
+    data : list, len (num_samples)
+        Dataset samples, [(X0, y0), (X1, y1), ...].
+    raw : bool, optional
+        Confusion matrix as counts per element, otherwise as (%).
+    return_acc : bool, optional
+        Additionally return overall classifier accuracy.
+
+    Output
+    ------
+    return : array or 2-tuple
+        Confusion matrix[, overall prediction accuracy on input data]. Final
+        column of the confusion matrix indicates a null prediction (no-spike).
     """
     num_classes = len(data[0][1])
     # Confusion matrix: <true classes> by <predicted classes>
     conf_mat = np.zeros((num_classes, num_classes + 1))
+    # [Optional overall accuracy]
+    if return_acc:
+        correct = 0.
     for X, y in data:
         label = np.argmax(y)  # True class label
         predict = clf.predict(X)  # Predicted class label
@@ -66,11 +83,17 @@ def confusion_matrix(clf, data, raw=True):
             conf_mat[label, predict] += 1.
         else:
             conf_mat[label, -1] += 1.
-    if raw:
-        return conf_mat
-    else:
+        # [Optional overall accuracy]
+        if return_acc:
+            if predict == np.argmax(y):
+                correct += 1.0
+    if not raw:
         # Percentage of occurances per row
-        return conf_mat * 100. / np.sum(conf_mat, 1, keepdims=True)
+        conf_mat *= 100. / np.sum(conf_mat, 1, keepdims=True)
+    if return_acc:
+        return conf_mat, correct / len(data) * 100.
+    else:
+        return conf_mat
 
 
 def rates_expt(net, data, weights):
