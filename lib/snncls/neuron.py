@@ -15,9 +15,9 @@ import numpy as np
 from snncls.parameters import ParamSet
 
 
-class LIFNeuron(object):
+class SRM(object):
     """
-    Leaky Integrate-and-Fire neuron type.
+    (Simplified) Spike-Response Model (SRM).
 
     Parameters
     ----------
@@ -30,16 +30,23 @@ class LIFNeuron(object):
     cm : float
         Membrane capacitance (nF)
     kappa_0 : float
-        Membrane time constant (ms).
+        Reset strength (mV).
     q : float
         Charge transferred due to a presynaptic spike (nA).
     """
     def __init__(self, **kwargs):
-        # Cell
-        self.prms = ParamSet({'tau_m': 10.,      # Membrane time constant (ms)
-                              'tau_s': 5.,       # Synaptic rise time (ms)
-                              'theta': 15.,      # Firing threshold (mV)
-                              'cm': 2.5,         # Membrane capacitance (nF)
-                              'kappa_0': -15.,   # Reset strength (mV)
-                              'psp_coeff': 4.})  # psp coeff (mV)
+        # Default cell prms
+        self.prms = ParamSet({'tau_m': 10.,
+                              'tau_s': 5.,
+                              'theta': 15.,
+                              'cm': 2.5,
+                              'kappa_0': -15.,
+                              'q': 5.})
+        self.update(**kwargs)
+
+    def update(self, **kwargs):
         self.prms.overwrite(**kwargs)
+        # Derived values
+        # psp coeff (mV)
+        self.prms['psp_coeff'] = self.prms['q'] / self.prms['cm'] * \
+            self.prms['tau_m'] / (self.prms['tau_m'] - self.prms['tau_s'])

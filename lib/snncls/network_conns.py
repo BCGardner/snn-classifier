@@ -16,10 +16,10 @@ from __future__ import division
 
 import numpy as np
 
-from snncls import netbase
+from snncls import netlif
 
 
-class Network(netbase.NetBase):
+class Network(netlif.NetLIF):
     """
     Spiking neural network with conduction delays.
     """
