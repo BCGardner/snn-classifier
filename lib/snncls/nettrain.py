@@ -20,25 +20,27 @@ class NetworkTraining(object):
     """
     Abstract network training class. Expected to be compatible with any output
     cost function.
+
+    Parameters
+    ----------
+    sizes : list
+        Num. neurons in [input, hidden, output layers].
+    param : container
+        Using:
+            eta : learning rate.
+            cell_params : dict of neuron parameters.
+            w_init : 2-tuple containing initial weight range.
+    LearnWindow: class
+        Define pre / post spiking correlation window for weight updates.
+    Network: class
+        Spiking neural network prototype.
     """
     def __init__(self, sizes, param, LearnWindow=learnwindow.PSPWindow,
-                 Network=network.Network, **kwargs):
+                 Network=network.MultilayerSRM, **kwargs):
         """
         Set network learning parameters and learning window.
         Contains spiking neural network with no conduction delays as default.
         Log average firing rate per epoch by default.
-
-        Inputs
-        ------
-        sizes : list
-            Num. neurons in [input, hidden, output layers].
-        param : container
-            Using:
-                eta : learning rate.
-                cell_params : dict of neuron parameters.
-                w_init : 2-tuple containing initial weight range.
-        LearnWindow: class
-            Define pre / post spiking correlation window for weight updates.
         """
         # Contain network
         self.net = Network(sizes, param, **kwargs)

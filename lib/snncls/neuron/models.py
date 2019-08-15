@@ -12,7 +12,7 @@ from __future__ import division
 
 import numpy as np
 
-from snncls.parameters import ParamSet
+from ..parameters import ParamSet
 
 
 class SRM(object):
