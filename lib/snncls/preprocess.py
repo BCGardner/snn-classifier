@@ -135,15 +135,40 @@ def onehot_encode(y, num_classes=None):
     return y_
 
 
-def pattern2psps(pattern, dt, duration, **kwargs):
+def pattern2psps(pattern, dt, duration, lut_psp=None, **kwargs):
     """
     Transform a spike pattern containing a set of spike trains into their
     evoked PSPs, for given duration and time step.
+
+    Parameters
+    ----------
+    pattern : list, len (num_pre)
+        Presynaptic spike trains.
+    dt : float
+        Simulation time step.
+    duration : float
+        Response duration.
+    lut_psp : array, optional
+        Predetermined PSP response kernel for optimisation.
+
+    Returns
+    -------
+    list, len (num_pre)
+        PSPs evoked due to each presynaptic spike train.
     """
     times = np.arange(0., duration, dt)
     # Evoked PSPs due to the spike pattern
-    psps = np.stack([psp_reduce(times, spike_train, **kwargs)
-                     for spike_train in pattern])
+    if lut_psp is not None:
+        num_iter = len(times)
+        assert num_iter == len(lut_psp)
+        psps = np.stack([np.zeros(num_iter) for i in xrange(len(pattern))])
+        for idx, spike_train in enumerate(pattern):
+            t_iters = np.round(np.asarray(spike_train) / dt).astype(int)
+            for t_iter in t_iters:
+                psps[idx][t_iter:] += lut_psp[:num_iter - t_iter]
+    else:
+        psps = np.stack([psp_reduce(times, spike_train, **kwargs)
+                         for spike_train in pattern])
     return psps
 
 

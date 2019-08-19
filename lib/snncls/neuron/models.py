@@ -14,7 +14,7 @@ import numpy as np
 
 from .escape_noise import ExpRate
 from ..parameters import ParamSet
-from ..preprocess import pattern2psps
+from ..preprocess import pattern2psps, psp_reduce, refr_reduce
 
 
 class SRM(object):
@@ -39,6 +39,10 @@ class SRM(object):
         Reset strength (mV).
     q : float
         Charge transferred due to a presynaptic spike (nA).
+    dt : float, optional
+        Simulation time step, used for LUT.
+    duration: float, optional
+        Repeated simulation runtime, used for LUT.
     """
     def __init__(self, stochastic=False, EscapeRate=ExpRate, **kwargs):
         # Stochastic spike generator
@@ -61,6 +65,15 @@ class SRM(object):
         # Stochastic spike generator
         if self.stochastic:
             self.esc_rate = EscapeRate(theta=self.prms['theta'], **kwargs)
+        # Predetermined response kernels (optional)
+        if all([k in kwargs for k in ['dt', 'duration']]):
+            times = np.arange(0., kwargs['duration'], kwargs['dt'])
+            self.lut = {'psp': psp_reduce(times, np.array([0.]),
+                                          **self.prms),
+                        'refr': refr_reduce(times, np.array([0.]),
+                                            **self.prms)}
+        else:
+            self.lut = None
 
     def response(self, stimulus, w, dt, duration):
         """
@@ -76,10 +89,16 @@ class SRM(object):
             Time resolution.
         duration : float
             Cut-off point for determining neuron response.
+
+        Returns
+        -------
+        array, shape (num_spikes,)
+            Output spike train.
         """
-        # Transform stimulus to PSPs for this neuron
+        # Transform stimulus into PSPs evoked at this neuron
         # psps : array, shape (num_inputs, num_iter)
-        psps = pattern2psps(stimulus, dt, duration, **self.prms)
+        psps = pattern2psps(stimulus, dt, duration, lut_psp=self.lut['psp'],
+                            **self.prms)
         spike_train = np.array([])
 
         # State variable updates
