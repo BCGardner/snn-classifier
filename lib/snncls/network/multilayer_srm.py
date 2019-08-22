@@ -32,42 +32,6 @@ class MultilayerSRM(MultilayerSRMBase):
     EscapeRate : class, default EXPRate
         Stochastic spike generator for hidden layer neurons.
     """
-    def __init__(self, sizes, param, weights=None,
-                 EscapeRate=ExpRate):
-        """
-        Randomly initialise weights of neurons in each layer.
-        """
-        super(MultilayerSRM, self).__init__(sizes, param, EscapeRate)
-        # Prototype weights
-        self.w = [np.empty((i, j))
-                  for i, j in zip(self.sizes[1:], self.sizes[:-1])]
-        self.reset(weights=weights)
-
-    def reset(self, rng_st=None, weights=None):
-        """
-        (Re)set network parameters. Optionally set rng to a given state, set
-        weights to a given value.
-        """
-        # Set rng to a given state, otherwise store last state
-        if rng_st is not None:
-            self.rng.set_state(rng_st)
-        else:
-            self.rng_st = self.rng.get_state()
-        # Set weights to a given value, otherwise randomly intialise according
-        # to a uniform distribution
-        if weights is not None:
-            self.set_weights(weights, assert_bounds=True)
-        else:
-            weights = []
-            # Hidden layers
-            for i, j in zip(self.sizes[1:-1], self.sizes[:-2]):
-                weights.append(self.rng.uniform(*self.w_h_init, size=(i, j)))
-            # Output layer
-            weights.append(self.rng.uniform(*self.w_o_init,
-                                            size=self.sizes[-1:-3:-1]))
-            # Set values
-            self.set_weights(weights)
-
     def simulate(self, stimulus, latency=False, return_psps=False,
                  debug=False):
         """
@@ -77,8 +41,8 @@ class MultilayerSRM(MultilayerSRMBase):
         Speedup of 9x compared with non-iterative method.
         Scales less well as number of neurons increases (loops used).
 
-        Inputs
-        ------
+        Parameters
+        ----------
         stimulus : array or list
             Input drive to the network, as one of two types:
                 - predetermined psps: array, shape (num_inputs, num_iter)
@@ -91,7 +55,7 @@ class MultilayerSRM(MultilayerSRMBase):
         debug : bool, optional
             Record network dynamics for debugging.
 
-        Outputs
+        Returns
         -------
         spike_trains_l : list
             List of neuron spike trains, for layers l > 0.
@@ -318,15 +282,17 @@ class MultilayerSRMSub(MultilayerSRMBase):
         delays are linearly-spaced. Fractional number of connections are
         approximated by clamping weights to zero on unused subconnections.
         """
-        super(MultilayerSRMSub, self).__init__(sizes, param, EscapeRate)
-
-        # Initialise subconnections and delays
+        assert max_delay > 1.
+        # Set common prms, prototype connectivity and initialise weights
         if np.isscalar(num_subs):
-            self.num_subs = [num_subs for i in xrange(self.num_layers - 1)]
+            self.num_subs = [num_subs for i in xrange(len(sizes) - 1)]
         else:
             self.num_subs = np.asarray(num_subs, dtype=int)
-        assert max_delay > 1.
+        self.conns_fr = conns_fr
+        super(MultilayerSRMSub, self).__init__(sizes, param, weights,
+                                               EscapeRate)
 
+        # Initialise delay values
         def distr_type(key, low=1., high=10.):
             # Return a desired distribution function, specified over
             # a given range of possible values
@@ -337,64 +303,56 @@ class MultilayerSRMSub(MultilayerSRMBase):
         distr = distr_type(delay_distr, high=max_delay)
         self.delays = [self.times2steps(distr(i)) for i in self.num_subs]
 
-        # Prototype weights
+    def _build_network(self, weights):
+        """
+        Prototype network connectivity with subconns. and initialise weight
+        values. Clamped hidden weights are determined here.
+        """
         self.w = [np.empty((i, j, k))
                   for i, j, k in zip(self.sizes[1:], self.sizes[:-1],
                   self.num_subs)]
         # Hidden weights mask with values clamped to zero
-        if conns_fr is not None:
-            self.conns_fr = conns_fr
+        if self.conns_fr is not None:
             self.clamp_mask = [np.zeros(w.shape, dtype=bool)
                                for w in self.w[:-1]]
             for idx, w in enumerate(self.w[:-1]):
                 num_clamps = \
-                    np.round((1. - conns_fr) * self.num_subs[idx]).astype(int)
+                    np.round((1. - self.conns_fr) *
+                             self.num_subs[idx]).astype(int)
                 assert 0 <= num_clamps < self.num_subs[idx]
                 for coord in np.ndindex(w.shape[:-1]):
                     clamp_idxs = self.rng.choice(self.num_subs[idx],
                                                  num_clamps, replace=False)
                     self.clamp_mask[idx][coord][clamp_idxs] = True
-        # Initialise network state
         self.reset(weights=weights)
 
-    def reset(self, rng_st=None, weights=None):
+    def _init_weights(self):
         """
-        (Re)set network parameters. Optionally set rng to a given state, set
-        weights to a given value.
+        Randomly intialise weights according to a uniform distribution, and
+        normalised w.r.t. num. subconns.
         """
-        # Set rng to a given state, otherwise store last state
-        if rng_st is not None:
-            self.rng.set_state(rng_st)
+        weights = []
+        # Hidden layers
+        for i, j, k in zip(self.sizes[1:-1], self.sizes[:-2],
+                           self.num_subs[:-1]):
+            weights.append(self.rng.uniform(*self.w_h_init,
+                                            size=(i, j, k)))
+        # Output layer
+        weights.append(self.rng.uniform(*self.w_o_init,
+                                        size=(self.sizes[-1],
+                                              self.sizes[-2],
+                                              self.num_subs[-1])))
+        # Normalise weights w.r.t. num_subs
+        if hasattr(self, 'clamp_mask'):
+            # Num. actual hidden weights with clamped values
+            for idx, w in enumerate(weights[:-1]):
+                num_conns = np.round(self.conns_fr *
+                                     self.num_subs[idx]).astype(int)
+                w /= num_conns
+            weights[-1] /= self.num_subs[-1]
         else:
-            self.rng_st = self.rng.get_state()
-        # Set weights to a given value, otherwise randomly intialise according
-        # to a uniform distribution
-        if weights is not None:
-            self.set_weights(weights, assert_bounds=True)
-        else:
-            weights = []
-            # Hidden layers
-            for i, j, k in zip(self.sizes[1:-1], self.sizes[:-2],
-                               self.num_subs[:-1]):
-                weights.append(self.rng.uniform(*self.w_h_init,
-                                                size=(i, j, k)))
-            # Output layer
-            weights.append(self.rng.uniform(*self.w_o_init,
-                                            size=(self.sizes[-1],
-                                                  self.sizes[-2],
-                                                  self.num_subs[-1])))
-            # Normalise weights w.r.t. num_subs
-            if hasattr(self, 'clamp_mask'):
-                # Num. actual hidden weights with clamped values
-                for idx, w in enumerate(weights[:-1]):
-                    num_conns = np.round(self.conns_fr *
-                                         self.num_subs[idx]).astype(int)
-                    w /= num_conns
-                weights[-1] /= self.num_subs[-1]
-            else:
-                weights = [w / w.shape[-1] for w in weights]
-            # Set values
-            self.set_weights(weights)
+            weights = [w / w.shape[-1] for w in weights]
+        self.set_weights(weights)
 
     def set_weights(self, weights, assert_bounds=False):
         """

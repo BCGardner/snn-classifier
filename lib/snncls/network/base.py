@@ -21,7 +21,7 @@ class MultilayerBase(object):
     Base class of spiking neural network with hidden neurons.
     Connectivity is feedforward with all-all connectivity.
     """
-    def __init__(self, sizes, param):
+    def __init__(self, sizes, param, weights=None):
         """
         Initialise common network parameters, constraints.
         """
@@ -34,9 +34,25 @@ class MultilayerBase(object):
         self.w_h_init = param.net['w_h_init']
         self.w_o_init = param.net['w_o_init']
         self.w_bounds = param.net['w_bounds']
+        # Build network
+        self._build_network(weights)
 
     def reset(self, rng_st=None, weights=None):
-        raise NotImplementedError
+        """
+        (Re)set network parameters. Optionally set rng to a given state, set
+        weights to a given value.
+        """
+        # Set rng to a given state, otherwise store last state
+        if rng_st is not None:
+            self.rng.set_state(rng_st)
+        else:
+            self.rng_st = self.rng.get_state()
+        # Set weights to a given value, otherwise randomly intialise according
+        # to a distribution
+        if weights is not None:
+            self.set_weights(weights, assert_bounds=True)
+        else:
+            self._init_weights()
 
     def simulate(self, stimulus, latency=False, return_psps=False,
                  debug=False):
@@ -46,6 +62,27 @@ class MultilayerBase(object):
         or debug recordings.
         """
         raise NotImplementedError
+
+    def _build_network(self, weights):
+        """
+        Prototype network connectivity and initialise weight values.
+        """
+        self.w = [np.empty((i, j))
+                  for i, j in zip(self.sizes[1:], self.sizes[:-1])]
+        self.reset(weights=weights)
+
+    def _init_weights(self):
+        """
+        Randomly intialise weights according to a uniform distribution.
+        """
+        weights = []
+        # Hidden layers
+        for i, j in zip(self.sizes[1:-1], self.sizes[:-2]):
+            weights.append(self.rng.uniform(*self.w_h_init, size=(i, j)))
+        # Output layer
+        weights.append(self.rng.uniform(*self.w_o_init,
+                                        size=self.sizes[-1:-3:-1]))
+        self.set_weights(weights)
 
     def get_weights(self):
         """
@@ -87,15 +124,15 @@ class MultilayerBase(object):
 class MultilayerSRMBase(MultilayerBase):
     """
     Base class of multilayer SNN. Subthreshold neuron dynamics are governed by
-    simplified SRM in all layers, using optimisation procedures.
+    simplified SRM in all layers with shared cell prms.
     """
-    def __init__(self, sizes, param, EscapeRate=ExpRate):
+    def __init__(self, sizes, param, weights=None, EscapeRate=ExpRate):
         """
         Initialise common network parameters, constraints, cell parameters,
         optimisations.
         """
-        super(MultilayerSRMBase, self).__init__(sizes, param)
-
+        # Common net prms, build net. connections.
+        super(MultilayerSRMBase, self).__init__(sizes, param, weights)
         # Parameters
         self.cell_params = param.cell
         # Hidden neuron model
