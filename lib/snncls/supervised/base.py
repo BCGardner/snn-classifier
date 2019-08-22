@@ -12,8 +12,9 @@ from __future__ import division
 
 import numpy as np
 
-from snncls import network, learnwindow
-import snncls.solver
+from .learnwindow import PSPWindow
+from ..network import MultilayerSRM
+from .solver import ConstLR, RMSProp, Adam
 
 
 class NetworkTraining(object):
@@ -35,8 +36,8 @@ class NetworkTraining(object):
     Network: class
         Spiking neural network prototype.
     """
-    def __init__(self, sizes, param, LearnWindow=learnwindow.PSPWindow,
-                 Network=network.MultilayerSRM, **kwargs):
+    def __init__(self, sizes, param, LearnWindow=PSPWindow,
+                 Network=MultilayerSRM, **kwargs):
         """
         Set network learning parameters and learning window.
         Contains spiking neural network with no conduction delays as default.
@@ -110,9 +111,9 @@ class NetworkTraining(object):
         tr_cases = len(data_tr)
 
         # Learning schedules
-        svr_dict = {'sgd': snncls.solver.ConstLR,
-                    'rmsprop': snncls.solver.RMSProp,
-                    'adam': snncls.solver.Adam}
+        svr_dict = {'sgd': ConstLR,
+                    'rmsprop': RMSProp,
+                    'adam': Adam}
         weights = self.net.get_weights()
         # TODO make eta an svr prm
         svr = svr_dict[solver](weights, eta=self.eta, **kwargs)
@@ -223,9 +224,9 @@ class NetworkTraining(object):
                 rec['w'][l][idx_r] = w
 
         # Learning schedules
-        svr_dict = {'sgd': snncls.solver.ConstLR,
-                    'rmsprop': snncls.solver.RMSProp,
-                    'adam': snncls.solver.Adam}
+        svr_dict = {'sgd': ConstLR,
+                    'rmsprop': RMSProp,
+                    'adam': Adam}
         svr = svr_dict[solver](weights, eta=self.eta, **kwargs)
         if warmstart:
             grad_w_acc = self.grad_accum(mini_batch)
