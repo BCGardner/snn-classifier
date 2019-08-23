@@ -1,10 +1,6 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Jul 2019
-
-@author: BG
-
 Decorators for functions, such as deprecation warnings.
 """
 

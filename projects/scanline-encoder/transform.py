@@ -1,11 +1,26 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-
 """
-Created on Oct 2018
+This script transforms pixel images into sets of encoding spike trains. The
+default loaded dataset is MNIST. The scanline encoding process can optionally
+be viewed as a dynamic plot.
 
-@author: BG
-@licence: GNU v3
+This file is part of snn-classifier.
+
+Copyright (C) 2018  Brian Gardner <brgardner@hotmail.co.uk>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np

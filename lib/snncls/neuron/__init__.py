@@ -2,7 +2,9 @@
 Standard neuron models are defined here for spiking neural networks.
 
 This module includes:
-    - SRM (simplified)
+    - SRM (simplified) neuronal model
+    - LinearRate escape rate model
+    - ExpRate escape rate model
 """
 
 from .models import SRM

@@ -1,11 +1,25 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Mar 2017
+Definitions of multilayer spiking networks, optimised for Spike
+Response Model (SRM) neuronal dynamics.
 
-@author: BG
+This file is part of snn-classifier.
 
-Define multilayer network object.
+Copyright (C) 2018  Brian Gardner <brgardner@hotmail.co.uk>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from __future__ import division
@@ -613,6 +627,7 @@ class MultilayerSRMSub(MultilayerSRMBase):
 
 class MultilayerSRMMix(MultilayerBase):
     """
+    TODO
     Spiking neural network, implemented for SRM but with mixed time constants
     in hidden layers.
 
@@ -641,123 +656,3 @@ class MultilayerSRMMix(MultilayerBase):
         populated with nrns, where hidden nrns have mixed time constants.
         """
         super(MultilayerSRMMix, self).__init__(sizes, param, weights)
-
-    def simulate(self, stimulus, latency=False, return_psps=False,
-                 debug=False):
-        """
-        Network activity in response to an input stimulus driving the
-        network. Based on iterative procedure to determine spike times.
-        Profiled at t = 0.34 s (iris, defaults (29/08/18), 20 hidden nrns).
-        Speedup of 9x compared with non-iterative method.
-        Scales less well as number of neurons increases (loops used).
-
-        Parameters
-        ----------
-        stimulus : array or list
-            Input drive to the network, as one of two types:
-                - predetermined psps: array, shape (num_inputs, num_iter)
-                - set of spike trains: list, len (num_inputs)
-        latency : bool, optional
-            Restrict to just finding first output spikes.
-        return_psps : bool
-            Return PSPs evoked due to each layer, excluding output layer, each
-            with shape (num_nrns, num_iter).
-        debug : bool, optional
-            Record network dynamics for debugging.
-
-        Returns
-        -------
-        spike_trains_l : list
-            List of neuron spike trains, for layers l > 0.
-        psps : list, optional
-            List of PSPs evoked, for layers l < L.
-        rec : dict, optional
-            Debug recordings containing
-            {'psp' as list of evoked PSPs, 'u' as list of potentials}.
-        """
-        # === Initialise ==================================================== #
-
-        # Cast stimulus to PSPs evoked by input neurons
-        psp_inputs = self.stimulus_as_psps(stimulus)
-        num_iter = psp_inputs.shape[1]
-        # Ensure pattern duration is compatible with look up tables
-        assert num_iter == len(self.lut['psp'])
-
-        # Record
-        rec = {}
-        if return_psps:
-            rec['psp'] = [np.empty((i, num_iter))
-                          for i in self.sizes[:-1]]
-            rec['psp'][0] = psp_inputs
-        if debug:
-            rec['u'] = [np.empty((i, num_iter))
-                        for i in self.sizes[1:]]
-        # Spike trains for layers: l > 0
-        spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
-                          for i in xrange(1, self.num_layers)]
-
-        # === Run simulation ================================================ #
-
-        # PSPs evoked by input neurons
-        psps = psp_inputs
-        # Hidden layer responses: l = [1, L)
-        for l in xrange(self.num_layers - 2):
-            potentials = np.dot(self.w[l], psps)
-            # Stochastic spiking
-            unif_samples = self.rng.uniform(size=np.shape(potentials))
-            # PSPs evoked by this layer
-            psps = np.zeros((self.sizes[l+1], num_iter))
-            for i in xrange(self.sizes[l+1]):
-                num_spikes = 0
-                while True:
-                    rates = self.neuron_h.activation(potentials[i])
-                    thr_idxs = \
-                        np.where(unif_samples[i] < rates * self.dt)[0]
-                    if num_spikes < len(thr_idxs):
-                        fire_idx = thr_idxs[num_spikes]
-                        iters = num_iter - fire_idx
-                        potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                        psps[i, fire_idx:] += self.lut['psp'][:iters]
-                        spike_trains_l[l][i] = \
-                            np.append(spike_trains_l[l][i],
-                                      fire_idx * self.dt)
-                        num_spikes += 1
-                    else:
-                        break
-            # Record
-            if return_psps:
-                rec['psp'][l+1] = psps
-            if debug:
-                rec['u'][l] = potentials
-        # Output responses
-        potentials = np.dot(self.w[-1], psps)
-        # PSPs evoked by this layer
-        psps = np.zeros((self.sizes[-1], num_iter))
-        for i in xrange(self.sizes[-1]):
-            num_spikes = 0
-            while True:
-                thr_idxs = \
-                    np.where(potentials[i] > self.cell_params['theta'])[0]
-                if num_spikes < len(thr_idxs):
-                    fire_idx = thr_idxs[num_spikes]
-                    iters = num_iter - fire_idx
-                    potentials[i, fire_idx:] += self.lut['refr'][:iters]
-                    psps[i, fire_idx:] += self.lut['psp'][:iters]
-                    spike_trains_l[-1][i] = np.append(spike_trains_l[-1][i],
-                                                      fire_idx * self.dt)
-                    # Optimisation: skip output spikes after first
-                    if latency:
-                        break
-                    else:
-                        num_spikes += 1
-                else:
-                    break
-        if debug:
-            rec['u'][-1] = potentials
-
-        if debug:
-            return spike_trains_l, rec
-        elif return_psps:
-            return spike_trains_l, rec['psp']
-        else:
-            return spike_trains_l

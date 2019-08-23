@@ -1,10 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 14 00:02:03 2018
-
-@author: BG
-@licence: GNU v3
+Routine used to find line equation given two points.
 
 Loihi relative p1, p2 measurements for five line equations:
     - (0, .224), (.919, 1.)
@@ -12,6 +9,23 @@ Loihi relative p1, p2 measurements for five line equations:
     - (.815, 1,), (.819, 0.)
     - (0, .827), (0.5, 0)
     - (0.152, 1.), (1., .5)
+
+This file is part of snn-classifier.
+
+Copyright (C) 2018  Brian Gardner <brgardner@hotmail.co.uk>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from __future__ import division
