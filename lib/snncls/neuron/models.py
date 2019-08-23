@@ -67,33 +67,40 @@ class SRM(object):
         if self.stochastic:
             self.esc_rate = EscapeRate(theta=self.prms['theta'], **kwargs)
 
-    def response(self, stimulus, w, dt, duration, debug=False):
+    def response(self, stimulus, w, dt, duration, return_psps=False,
+                 debug=False):
         """
         Neuron's response to a driving stimulus, through a weight vector.
 
         Parameters
         ----------
         stimulus : list, len (num_inputs)
-            Set of input spike trains.
+            Set of presynaptic spike trains.
         w : array, shape (num_inputs,)
             Input weight vector.
         dt : float
             Time resolution.
         duration : float
             Cut-off point for determining neuron response.
+        return_psps : bool
+            Additionally return PSPs evoked at this neuron.
         debug : bool
             Additionally return recorded potential.
 
         Returns
         -------
-        array, shape (num_spikes,)
+        spike_train : array, shape (num_spikes,)
             Output spike train.
+        psps : array, optional, shape (num_pre, num_iter)
+            Evoked PSPs at this neuron.
+        potentials : array, optional, shape (num_iter)
+            Recorded voltages.
         """
         # Optimisation
         lut_refr = refr_reduce(np.arange(0., duration, dt), np.array([0.]),
                                **self.prms)
         # Transform stimulus into PSPs evoked at this neuron
-        # psps : array, shape (num_inputs, num_iter)
+        # psps : array, shape (num_pre, num_iter)
         psps = pattern2psps(stimulus, dt, duration, **self.prms)
         num_iter = psps.shape[1]
 
@@ -118,7 +125,13 @@ class SRM(object):
                         num_spikes += 1
             else:
                 break
+        # Optional return values
+        ret = (spike_train,)
+        if return_psps:
+            ret += (psps,)
         if debug:
-            return spike_train, potentials
+            ret += (potentials,)
+        if len(ret) > 1:
+            return ret
         else:
-            return spike_train
+            return ret[0]
