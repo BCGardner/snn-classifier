@@ -13,7 +13,7 @@ from __future__ import division
 from argparse import Namespace
 import numpy as np
 
-from snncls.parameters import ParamSet
+from ..parameters import ParamSet
 
 
 class Solver(object):
@@ -56,7 +56,7 @@ class ConstLR(Solver):
     eta : float
         Const. LRate.
     """
-    def __init__(self, weights=[],  **kwargs):
+    def __init__(self, weights=[], **kwargs):
         # Defaults
         super(ConstLR, self).__init__(weights, eta=1.)
         # Update with user-specified
@@ -83,7 +83,7 @@ class RMSProp(Solver):
     epsilon : float
         Regularisation prm for numerical stability.
     """
-    def __init__(self, weights=[],  **kwargs):
+    def __init__(self, weights=[], **kwargs):
         # Defaults
         super(RMSProp, self).__init__(weights, decay=0.9, alpha=0.1,
                                       epsilon=1e-8)
@@ -119,7 +119,7 @@ class Adam(Solver):
     epsilon : float
         Regularisation prm for numerical stability.
     """
-    def __init__(self, weights=[],  **kwargs):
+    def __init__(self, weights=[], **kwargs):
         # Defaults
         super(Adam, self).__init__(weights, betas=(0.9, 0.999), alpha=0.1,
                                    epsilon=1e-8)

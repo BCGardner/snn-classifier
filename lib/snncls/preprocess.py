@@ -139,11 +139,33 @@ def pattern2psps(pattern, dt, duration, **kwargs):
     """
     Transform a spike pattern containing a set of spike trains into their
     evoked PSPs, for given duration and time step.
+
+    Parameters
+    ----------
+    pattern : list, len (num_pre)
+        Presynaptic spike trains.
+    dt : float
+        Simulation time step.
+    duration : float
+        Response duration.
+
+    Returns
+    -------
+    array, shape (num_pre, num_iter)
+        PSPs evoked due to each presynaptic spike train.
     """
     times = np.arange(0., duration, dt)
+    num_iter = len(times)
+    # Optimisation
+    lut_psp = psp_reduce(times, np.array([0.]), **kwargs)
     # Evoked PSPs due to the spike pattern
-    psps = np.stack([psp_reduce(times, spike_train, **kwargs)
-                     for spike_train in pattern])
+    psps = np.stack([np.zeros(num_iter) for i in xrange(len(pattern))])
+    for idx, spike_train in enumerate(pattern):
+        t_iters = np.round(np.asarray(spike_train) / dt).astype(int)
+        for t_iter in t_iters:
+            psps[idx][t_iter:] += lut_psp[:num_iter - t_iter]
+    # psps = np.stack([psp_reduce(times, spike_train, **kwargs)
+    #                      for spike_train in pattern])
     return psps
 
 
