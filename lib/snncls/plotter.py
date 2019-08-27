@@ -476,6 +476,61 @@ class Plotter(object):
         # Save
         self.print_plot(f, fname)
 
+    def errbars(self, x, *ys, **kwargs):
+        """
+        Plot each y in ys vs independent x values. Optionally plot errorbars if
+        each y has ndim > 1.
+        y : array, shape (num_vals[, 2])
+        """
+        args = {'figsize': None,
+                'xlog': False,
+                'ylog': False,
+                'ylim': None,
+                'num_yticks': None,
+                'labels': None,
+                'title': None,
+                'fontsize': None,
+                'xlabel': None,
+                'ylabel': None,
+                'grid': False,
+                'fname': None}
+        args.update(kwargs)
+        # Setup
+        f, ax = self.setup_fig(figsize=args['figsize'])
+
+        for idx, y in enumerate(ys):
+            if args['labels'] is not None:
+                label = args['labels'][idx]
+            else:
+                label = None
+            if np.ndim(y) > 1:
+                ax.errorbar(x, y[:, 0], y[:, 1], label=label, marker='o',
+                            capsize=4)
+            else:
+                ax.plot(x, y, '-o', label=label)
+        if args['xlog']:
+            ax.set_xscale('log')
+        if args['ylog']:
+            ax.set_yscale('log')
+        # Axis scale, ticks
+        ax.set_ylim(args['ylim'])
+        self.set_ticks(ax.get_yaxis(), args['num_yticks'])
+        # Legend
+        if args['labels'] is not None:
+            leg = ax.legend(fontsize=args['fontsize'])
+            leg.set_title(args['title'])
+        # Axis labels
+        if args['xlabel'] is not None:
+            ax.set_xlabel(args['xlabel'])
+        if args['ylabel'] is not None:
+            ax.set_ylabel(args['ylabel'])
+        # Enable grid
+        ax.grid(b=args['grid'])
+        # Set custom font sizes
+        self.set_fontsize(ax)
+        # Save
+        self.print_plot(f, args['fname'])
+
     def losses(self, *losses, **kwargs):
         """
         Plot set of loss curves, sharing same length.

@@ -33,7 +33,8 @@ from .solver import ConstLR, RMSProp, Adam
 class NetworkTraining(object):
     """
     Abstract network training class. Expected to be compatible with any output
-    cost function.
+    cost function minimised using backpropagation. Currently implemented based
+    on SRM neurons in hidden and output layers.
 
     Parameters
     ----------

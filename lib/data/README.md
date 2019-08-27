@@ -1,9 +1,9 @@
 # Datasets
 
-Name		Description			Link
-====		===========			====
-iris		sklearn demo set		N/A
-wisconsin	UCI set (1996)			https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data
+Name		Description			            Link
+====		===========			            ====
+iris		sklearn demo set		        N/A
+wisconsin	UCI set (1996)			        https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data
 wisc		UCI set as used in Bohte (1992) https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/breast-cancer-wisconsin.data
 wisc_nmf	NMF decomposed wisc_original	N/A
 
@@ -45,16 +45,4 @@ Unless otherwise stated, the datasets were benchmarked using sklearn MLP, setup 
 - MLP gives a training accuracy of 96.9 % after normalisation, after 539 iterations.
 - Normalising this dataset gives better accuracy.
 - Using an MLP containing 30 hidden neurons gives an accuracy of 96.8 % after normalisation, after 601 iterations.
-
-## mnist_spikes
-
-- Raw output of scanline-encoder on a subset of MNIST.
-- scan lines matched to Loihi paper (five total).
-- Contains 600 samples, selected randomly (seed 42).
-
-## mnist3750_radon28
-
-- First 3750 training samples of MNIST, radon-transformed using 28 projections.
-- Projections selected from [0, 180) in equal steps.
-- Radon projections assume a circular image.
 
