@@ -19,9 +19,11 @@ After setup, a good starting point is to visualise the process of 'scanline enco
 
 `$ ./main.py`
 
-Optional command line arguments can be passed to main.py: for a complete list use the '-h' flag.
+Optional command line arguments can be passed to main.py: for a complete list use the '-h' flag. MNIST digits being transformed into, for example, eight spike trains via scanline encoding can be visualised using the following command:
 
-Examples of multilayer SNN training scripts may be found under 'projects/multilayer-classifier', such as 'main_mnist.py' when training an SNN on the MNIST dataset.
+`$ ./transform.py -p -s 8`
+
+where the argument `-s` specifies the number of randomly-oriented scanlines used to encode the digit.
 
 ## License
 Code released under the GNU General Public License v3.

@@ -27,8 +27,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
-from lib import loader, scanner, neuron, plotter
-import lib.helpers as hp
+from snncls.scanline import scanner, neuron
+from lib import loader, plotter
 
 
 def main(opt):

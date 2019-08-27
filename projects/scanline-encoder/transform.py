@@ -29,7 +29,8 @@ import argparse
 import json
 
 from snncls import dataset_loader, helpers
-from lib import scanner, neuron, plotter, common
+from snncls.scanline import scanner, neuron
+from lib import plotter, common
 
 # Matched to Intel's Loihi encoder for 28x28
 line_eqs_loihi = [(0.844, 6.27), (1.00, -4.62), (-250., 5733.),
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--duration", type=float, default=9.,
                         help="scan duration")
     # Random distr.
-    parser.add_argument("--distr", type=str, default='loihi',
+    parser.add_argument("--distr", type=str, default='ctr',
                         help="line distributions: 'loihi', 'edges', 'ctr'")
     parser.add_argument("-s", "--scans", type=int, default=6,
                         help="number of randomly-oriented scanlines")
@@ -189,8 +190,8 @@ if __name__ == "__main__":
 
     data = main(args)
     # Class frequencies
-    print 'class counts:' + \
-        str([np.sum(data[1] == i) for i in np.unique(data[1])])
+    # print 'class counts:' + \
+    #     str([np.sum(data[1] == i) for i in np.unique(data[1])])
 
     # Save results
     if args.fname is not None:
