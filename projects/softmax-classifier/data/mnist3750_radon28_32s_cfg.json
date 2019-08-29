@@ -1,0 +1,18 @@
+{
+    "tau_m": 3.0, 
+    "num_cases": 3750, 
+    "nrn": "lif", 
+    "randomise": false, 
+    "plot": false, 
+    "data_id": "mnist3750_radon28", 
+    "resistance": 10.0, 
+    "t_abs": 1.0, 
+    "seed": 42, 
+    "v_thr": 1.5, 
+    "scale": 0.25, 
+    "fname": "mnist3750_radon28_32s", 
+    "distr": "ctr", 
+    "duration": 9.0, 
+    "wait": 0.02, 
+    "scans": 32
+}

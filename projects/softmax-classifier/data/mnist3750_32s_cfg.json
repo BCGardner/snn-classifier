@@ -1,0 +1,13 @@
+{
+    "plot": true, 
+    "num_cases": 3750, 
+    "nrn": "lif", 
+    "randomise": false, 
+    "seed": 42, 
+    "scale": 0.25, 
+    "fname": "mnist3750_16s", 
+    "distr": "ctr", 
+    "duration": 9.0, 
+    "wait": 0.01, 
+    "scans": 32
+}

@@ -399,7 +399,8 @@ class Plotter(object):
     #        axarr[2].set_yticks([0])
     #        axarr[2].set_ylabel("Voltage")
     #        axarr[2].legend(loc="lower right", fontsize='x-small')
-        st_panel(spikes[2], axarr[2], vline_size=0.5, ymax=num_outputs)
+        else:
+            st_panel(spikes[2], axarr[2], vline_size=0.5, ymax=num_outputs)
         axarr[2].set_yticks([0, num_outputs])
         axarr[2].set_ylabel("Output")
         # [Output voltage traces]
