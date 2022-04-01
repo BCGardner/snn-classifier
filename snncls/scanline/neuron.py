@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Scanline encoder models used to convert features into spike trains.
 Encoders are based on spiking neuron models.
@@ -22,12 +20,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 
-class Neuron(object):
+class Neuron():
     """
     Abstract encoding neuron.
     """

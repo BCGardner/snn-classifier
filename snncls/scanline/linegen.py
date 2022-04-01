@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Routines used to setup line equations for scanline encoding.
 
@@ -21,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
 from itertools import cycle, islice
 
 import numpy as np
@@ -79,7 +76,7 @@ def generate_eqs_ctr(num_eqs, bounds=(28., 28.), rng=np.random.RandomState(),
     positioned about the grid centre, and random line orientations.
     """
     line_eqs = []
-    for idx in xrange(num_eqs):
+    for idx in range(num_eqs):
         # Random point intercepts, following normal distribution located at
         # grid centre
         x = norm(rng=rng, **kwargs)

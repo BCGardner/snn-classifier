@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Definitions of multilayer spiking networks, optimised for Spike
 Response Model (SRM) neuronal dynamics.
@@ -21,8 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-from __future__ import division
 
 import numpy as np
 
@@ -97,21 +93,21 @@ class MultilayerSRM(MultilayerSRMBase):
             rec['u'] = [np.empty((i, num_iter))
                         for i in self.sizes[1:]]
         # Spike trains for layers: l > 0
-        spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
-                          for i in xrange(1, self.num_layers)]
+        spike_trains_l = [[np.array([]) for j in range(self.sizes[i])]
+                          for i in range(1, self.num_layers)]
 
         # === Run simulation ================================================ #
 
         # PSPs evoked by input neurons
         psps = psp_inputs
         # Hidden layer responses: l = [1, L)
-        for l in xrange(self.num_layers - 2):
+        for l in range(self.num_layers - 2):
             potentials = np.dot(self.w[l], psps)
             # Stochastic spiking
             unif_samples = self.rng.uniform(size=np.shape(potentials))
             # PSPs evoked by this layer
             psps = np.zeros((self.sizes[l+1], num_iter))
-            for i in xrange(self.sizes[l+1]):
+            for i in range(self.sizes[l+1]):
                 num_spikes = 0
                 while True:
                     rates = self.neuron_h.activation(potentials[i])
@@ -137,7 +133,7 @@ class MultilayerSRM(MultilayerSRMBase):
         potentials = np.dot(self.w[-1], psps)
         # PSPs evoked by this layer
         psps = np.zeros((self.sizes[-1], num_iter))
-        for i in xrange(self.sizes[-1]):
+        for i in range(self.sizes[-1]):
             num_spikes = 0
             while True:
                 thr_idxs = \
@@ -204,7 +200,7 @@ class MultilayerSRMSub(MultilayerSRMBase):
         assert max_delay > 1.
         # Set common prms, prototype connectivity and initialise weights
         if np.isscalar(num_subs):
-            self.num_subs = [num_subs for i in xrange(len(sizes) - 1)]
+            self.num_subs = [num_subs for i in range(len(sizes) - 1)]
         else:
             self.num_subs = np.asarray(num_subs, dtype=int)
         self.conns_fr = conns_fr
@@ -338,20 +334,20 @@ class MultilayerSRMSub(MultilayerSRMBase):
             rec['u'] = [np.empty((i, num_iter))
                         for i in self.sizes[1:]]
         # Spike trains for layers: l > 0
-        spike_trains_l = [[np.array([]) for j in xrange(self.sizes[i])]
-                          for i in xrange(1, self.num_layers)]
+        spike_trains_l = [[np.array([]) for j in range(self.sizes[i])]
+                          for i in range(1, self.num_layers)]
 
         # === Run simulation ================================================ #
 
         # Hidden layer responses: l = [1, L)
-        for l in xrange(self.num_layers - 2):
+        for l in range(self.num_layers - 2):
             potentials = np.tensordot(self.w[l], psps)
             # Stochastic spiking: the order in which random values are sampled
             # differs from simulate_steps
             unif_samples = self.rng.uniform(size=np.shape(potentials))
             # PSPs evoked by this layer
             psps = np.zeros((self.sizes[l+1], self.num_subs[l+1], num_iter))
-            for i in xrange(self.sizes[l+1]):
+            for i in range(self.sizes[l+1]):
                 num_spikes = 0
                 while True:
                     rates = self.neuron_h.activation(potentials[i])
@@ -379,7 +375,7 @@ class MultilayerSRMSub(MultilayerSRMBase):
                 rec['u'][l] = potentials
         # Output responses
         potentials = np.tensordot(self.w[-1], psps)
-        for i in xrange(self.sizes[-1]):
+        for i in range(self.sizes[-1]):
             num_spikes = 0
             while True:
                 thr_idxs = \

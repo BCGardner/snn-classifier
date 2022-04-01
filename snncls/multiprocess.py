@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Multiprocessing routines.
 
@@ -55,7 +53,7 @@ def args_map(worker_func, args, prm_labels=None, report=True):
         num_phys_cores = psutil.cpu_count(logical=False)
         pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
     if report:
-        print 'Num workers: {}'.format(pool._processes)
+        print('Num workers: {}'.format(pool._processes))
         t_start = time.time()
 
     # Initialise seeds
@@ -74,7 +72,7 @@ def args_map(worker_func, args, prm_labels=None, report=True):
                 prmset_dict[k] = v
         # Repeated runs per parameter point
         args_runs = []
-        for i in xrange(args.num_runs):
+        for i in range(args.num_runs):
             d = copy.deepcopy(prmset_dict)
             args_runs.append(Namespace(**d))
         # Assign (unique) seeds
@@ -97,11 +95,11 @@ def args_map(worker_func, args, prm_labels=None, report=True):
     pool.join()
     if report:
         t_elapsed = time.time() - t_start
-        print '{:.2f} s'.format(t_elapsed)
+        print('{:.2f} s'.format(t_elapsed))
 
     # Gather results as array of lists
     results = [results[i:i+args.num_runs] for i in
-               xrange(0, len(results), args.num_runs)]
+               range(0, len(results), args.num_runs)]
     results_gtr = np.empty(grid_shape, dtype=object)
     for idx, result in enumerate(results):
         coord = np.unravel_index(idx, grid_shape)
@@ -126,7 +124,7 @@ def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
         num_phys_cores = psutil.cpu_count(logical=False)
         pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
     if report:
-        print 'Num workers: {}'.format(pool._processes)
+        print('Num workers: {}'.format(pool._processes))
         t_start = time.time()
 
     # Initialise seeds
@@ -142,7 +140,7 @@ def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
         for k, v in zip(prm_labels, vals):
             arg_dict[k] = v
         # Repeated runs per parameter point
-        arg_dicts = [copy.deepcopy(arg_dict) for i in xrange(num_runs)]
+        arg_dicts = [copy.deepcopy(arg_dict) for i in range(num_runs)]
         # Assign (unique) seeds
         offset = idx * num_runs
         for d, s in zip(arg_dicts, seeds[offset:offset+num_runs]):
@@ -162,11 +160,11 @@ def prms_map(worker_func, prm_vals, prm_labels, args_com, seed=None,
     pool.join()
     if report:
         t_elapsed = time.time() - t_start
-        print '{:.2f} s'.format(t_elapsed)
+        print('{:.2f} s'.format(t_elapsed))
 
     # Gather results as array of lists
     results = \
-        [results[i:i+num_runs] for i in xrange(0, len(results), num_runs)]
+        [results[i:i+num_runs] for i in range(0, len(results), num_runs)]
     results_gtr = np.empty(grid_shape, dtype=object)
     for idx, result in enumerate(results):
         coord = np.unravel_index(idx, grid_shape)
@@ -210,7 +208,7 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
     """
     # Task parameters
     grid_shape = tuple([len(i) for i in prm_vals])
-    grid_ranges = [xrange(i) for i in grid_shape]
+    grid_ranges = [range(i) for i in grid_shape]
 
     # Setup pool of workers
     if num_proc is not None:
@@ -219,7 +217,7 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
         num_phys_cores = psutil.cpu_count(logical=False)
         pool = mp.Pool(processes=num_phys_cores, maxtasksperchild=None)
     if report:
-        print 'Num workers: {}'.format(pool._processes)
+        print('Num workers: {}'.format(pool._processes))
         t_start = time.time()
 
     # Initialise seeds
@@ -236,7 +234,7 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
         # Set shared parameter values over repeated runs
         for idx, label in enumerate(prm_labels):
             arg_dict[label] = prm_vals[idx][coord[idx]]
-        arg_set = [copy.deepcopy(arg_dict) for i in xrange(num_runs)]
+        arg_set = [copy.deepcopy(arg_dict) for i in range(num_runs)]
         # Set (unique) seeds
         for d, s in zip(arg_set, seeds[coord]):
             d['seed'] = s
@@ -252,7 +250,7 @@ def param_sweep(worker_func, prm_vals, prm_labels, args_com, seed=None,
             print('Completed: {}'.format(coord))
     if report:
         t_elapsed = time.time() - t_start
-        print '{:.2f} s'.format(t_elapsed)
+        print('{:.2f} s'.format(t_elapsed))
 
     # Gather results as array of lists
     results_gtr = np.empty(grid_shape, dtype=object)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Custom learning windows for pre- and post spiking correlations.
 
@@ -21,12 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 
-class LearnWindow(object):
+class LearnWindow():
     """
     Abstract learning window.
     Implements causal (pre-to-post) spiking correlations only.

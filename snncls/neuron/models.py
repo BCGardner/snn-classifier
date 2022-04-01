@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Definitions of standard neuron types and their associated parameter sets.
 
@@ -21,8 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 from .escape_noise import ExpRate
@@ -30,7 +26,7 @@ from ..parameters import ParamSet
 from ..preprocess import pattern2psps, refr_reduce
 
 
-class SRM(object):
+class SRM():
     """
     (Simplified) Spike-Response Model (SRM).
 

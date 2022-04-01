@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Base class for network training and data classification.
 
@@ -21,8 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 from .learnwindow import PSPWindow
@@ -30,7 +26,7 @@ from ..network import MultilayerSRM
 from .solver import ConstLR, RMSProp, Adam
 
 
-class NetworkTraining(object):
+class NetworkTraining():
     """
     Abstract network training class. Expected to be compatible with any output
     cost function minimised using backpropagation. Currently implemented based
@@ -149,11 +145,11 @@ class NetworkTraining(object):
 
         # === Training ====================================================== #
 
-        for j in xrange(epochs):
+        for j in range(epochs):
             # Partition data into mini batches
             self.rng.shuffle(data_tr)
             mini_batches = [data_tr[k:k+mini_batch_size]
-                            for k in xrange(0, tr_cases, mini_batch_size)]
+                            for k in range(0, tr_cases, mini_batch_size)]
             for mini_batch in mini_batches:
                 self.update_mini_batch(mini_batch, solver=svr)
             # Debugging recordings
@@ -175,7 +171,7 @@ class NetworkTraining(object):
                         break
             # Report training / test error rates per epoch
             if report and not j % epochs_r:
-                print "Epoch: {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j])
+                print("Epoch: {0}\t\t{1:.3f}".format(j, rec['tr_loss'][j]))
 #                print "Epoch {0}:\ttrain:\t{1:.3f}".format(
 #                        j + 1, self.evaluate(data_tr))
 #                if data_te is not None:
@@ -248,7 +244,7 @@ class NetworkTraining(object):
 
         # === Training ====================================================== #
 
-        for j in xrange(num_iter):
+        for j in range(num_iter):
             # Randomly select subset of training data without replacement
             mini_batch = rand_subset(data_tr, tr_cases, size=mini_batch_size)
             self.update_mini_batch(mini_batch, solver=svr)
@@ -271,8 +267,7 @@ class NetworkTraining(object):
                             break
                 # Report training / test error rates per epoch
                 if report:
-                    print "Iters: {0}\t\t{1:.3f}".format(j+1,
-                                                         rec['tr_loss'][idx_r])
+                    print("Iters: {0}\t\t{1:.3f}".format(j+1, rec['tr_loss'][idx_r]))
         return rec
 
     def update_mini_batch(self, mini_batch, solver):

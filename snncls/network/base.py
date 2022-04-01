@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Base spiking neural network classes.
 
@@ -21,15 +19,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 from ..neuron import ExpRate
 from .. import preprocess
 
 
-class MultilayerBase(object):
+class MultilayerBase():
     """
     Base class of spiking neural network with hidden neurons.
     Connectivity is feedforward with all-all connectivity.

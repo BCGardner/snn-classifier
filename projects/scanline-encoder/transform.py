@@ -1,5 +1,4 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
 This script transforms pixel images into sets of encoding spike trains. The
 default loaded dataset is MNIST. The scanline encoding process can optionally
@@ -73,7 +72,7 @@ def main(opt):
     num_scanners = len(scanners)
     # Neurons
     nrns = []
-    for i in xrange(num_scanners):
+    for i in range(num_scanners):
         if opt.nrn == 'lif':
             nrns.append(neuron.LIF(dt, R=opt.resistance, tau_m=opt.tau_m,
                                    t_abs=opt.t_abs, v_thr=opt.v_thr))
@@ -87,14 +86,14 @@ def main(opt):
     rec = dict()
     if opt.plot:
         rec['r'] = [np.full((num_steps, 2), np.nan)
-                    for i in xrange(num_scanners)]  # Scanner positions
+                    for i in range(num_scanners)]  # Scanner positions
         rec['i'] = [np.full(num_steps, np.nan)
-                    for i in xrange(num_scanners)]  # Pixel intensities
-        rec['addr'] = [[] for i in xrange(num_scanners)]  # Scanned pixel addrs
+                    for i in range(num_scanners)]  # Pixel intensities
+        rec['addr'] = [[] for i in range(num_scanners)]  # Scanned pixel addrs
         rec['v'] = np.full((num_steps, num_scanners), np.nan)  # Nrn voltages
     # Record spike trains for each sample
-    spike_trains = [[np.array([]) for i in xrange(num_scanners)]
-                    for j in xrange(opt.num_cases)]
+    spike_trains = [[np.array([]) for i in range(num_scanners)]
+                    for j in range(opt.num_cases)]
 
     # Scan each sample
     for idx_im, x in enumerate(X):

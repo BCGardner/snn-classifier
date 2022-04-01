@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Models for transforming various feature types into spike latencies for network
 input.
@@ -22,14 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 from snncls import scanline
 
 
-class BaseModel(object):
+class BaseModel():
     """
     Model template for transforming features into sets of spike latencies.
     """
@@ -306,7 +302,7 @@ class ReceptiveFields(BaseModel):
         # Intensity of responses
         m, n = X.shape
         latencies = np.empty((m, self.neurons_f * n))
-        for f in xrange(n):
+        for f in range(n):
             latencies[:, self.neurons_f*f:self.neurons_f*(f + 1)] = \
                 gaussian(X[:, [f]], self.centers[f, :], self.sigmas[f])
         # Convert to spike latencies
@@ -393,7 +389,7 @@ class ScanLines(BaseModel):
         else:
             raise TypeError('Invalid scanner type.')
         self._nrns = []
-        for i in xrange(self.num_scans):
+        for i in range(self.num_scans):
             self._nrns.append(NrnType(dt, **kwargs))
 
     def transform(self, X):
@@ -405,8 +401,8 @@ class ScanLines(BaseModel):
         # Normalise data
         X_ = (X - self._X_min) / (self._X_max - self._X_min)
         # List of spike patterns
-        spike_trains = [[np.array([]) for i in xrange(self.num_scans)]
-                        for j in xrange(len(X_))]
+        spike_trains = [[np.array([]) for i in range(self.num_scans)]
+                        for j in range(len(X_))]
         # Scan each sample
         for x, spike_train in zip(X_, spike_trains):
             img = x.reshape(self.bounds)

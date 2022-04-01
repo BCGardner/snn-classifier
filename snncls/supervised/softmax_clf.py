@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Network training and classification with softmax outputs, based on
 time-to-first-spike decoding.
@@ -21,8 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-from __future__ import division
 
 import numpy as np
 
@@ -147,12 +143,12 @@ class SoftmaxClf(NetworkTraining):
 
         if self.rate_pow == 0:
             # Apply L2 penalty to all layers
-            for l in xrange(self.net.num_layers - 1):
+            for l in range(self.net.num_layers - 1):
                 # Compatability with existing results
                 grad_w[l] += self.l2_pen * weights[l]
         else:
             # Apply L2 penalty with rate-dependence to all layers
-            for l in xrange(self.net.num_layers - 1):
+            for l in range(self.net.num_layers - 1):
                 for i, spike_train in enumerate(spike_trains_l[l]):
                     spike_count = len(spike_train)
                     if spike_count > 0:
@@ -160,7 +156,7 @@ class SoftmaxClf(NetworkTraining):
                             spike_count**self.rate_pow
 
         # Synaptic scaling in all layers to sustain activity
-        for l in xrange(self.net.num_layers - 1):
+        for l in range(self.net.num_layers - 1):
             fired = np.array([len(spikes) > 0 for spikes in spike_trains_l[l]])
             grad_w[l][~fired] -= self.syn_scale * \
                 np.abs(weights[l][~fired])
