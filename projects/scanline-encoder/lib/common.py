@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Routines used to setup line equations.
 
@@ -74,7 +72,7 @@ def generate_eqs_ctr(num_eqs, bounds=(28., 28.), rng=np.random.RandomState(),
     positioned about the grid centre, and random line orientations.
     """
     line_eqs = []
-    for idx in xrange(num_eqs):
+    for idx in range(num_eqs):
         # Random point intercepts, following normal distribution located at
         # grid centre
         x = norm(rng=rng, **kwargs)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 MNIST: one-one encoding of each input pixel as a spike latency. Spike latencies
 are encoded into the first layer of a feedforward multilayer network with
@@ -25,6 +23,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
+# %% === Imports ============================================================ #
 
 import numpy as np
 import time

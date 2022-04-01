@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Preprocessing features for spike-based learning.
 
@@ -20,8 +18,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-from __future__ import division
 
 import numpy as np
 
@@ -72,7 +68,7 @@ def transform_data(X, y, param, receptor=None, num_classes=None,
                                     return_trains=True, **param.cell)
     else:
         input_data = latencies2patterns(latencies)
-    return zip(input_data, y_enc)
+    return list(zip(input_data, y_enc))
 
 
 def transform_spikes(X, y, param, receptor=None,
@@ -114,9 +110,9 @@ def transform_spikes(X, y, param, receptor=None,
                 psps = pattern2psps(pattern, param.dt,
                                     param.pattern['duration'], **param.cell)
                 inputs[idx] = psps
-            return zip(inputs, y_enc)
+            return list(zip(inputs, y_enc))
         else:
-            return zip(X, y_enc)
+            return list(zip(X, y_enc))
     else:
         pass
 
@@ -142,7 +138,7 @@ def onehot_encode(y, num_classes=None):
     if num_classes is None:
         num_classes = len(labels)
     y_ = np.zeros((m, num_classes))
-    for i in xrange(m):
+    for i in range(m):
         index = np.where(labels == y[i])[0][0]
         y_[i, index] = 1.0
     return y_
@@ -172,7 +168,7 @@ def pattern2psps(pattern, dt, duration, **kwargs):
     # Optimisation
     lut_psp = psp_reduce(times, np.array([0.]), **kwargs)
     # Evoked PSPs due to the spike pattern
-    psps = np.stack([np.zeros(num_iter) for i in xrange(len(pattern))])
+    psps = np.stack([np.zeros(num_iter) for i in range(len(pattern))])
     for idx, spike_train in enumerate(pattern):
         t_iters = np.round(np.asarray(spike_train) / dt).astype(int)
         for t_iter in t_iters:

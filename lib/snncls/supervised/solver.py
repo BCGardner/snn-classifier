@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Learning schedules for network training via SGD.
 
@@ -21,15 +19,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 from argparse import Namespace
 import numpy as np
 
 from ..parameters import ParamSet
 
 
-class Solver(object):
+class Solver():
     """
     Abstract solver class. Computes weight changes based on learning schedule.
     """

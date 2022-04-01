@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Scanner class definition.
 
@@ -21,12 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import division
-
 import numpy as np
 
 
-class Scanner(object):
+class Scanner():
     """
     Scanning element - scans along a given line
     """
@@ -105,7 +101,7 @@ class Scanner(object):
         # y intercepts at each x_limit
         ys = self.line_eq[0] * np.array(self.x_lim) + self.line_eq[1]
         # Coordinates of intercepts at x and y limits
-        self.intercepts = zip(xs, self.y_lim) + zip(self.x_lim, ys)
+        self.intercepts = list(zip(xs, self.y_lim)) + list(zip(self.x_lim, ys))
         # Assert unique intercepts through two boundary points
         points = np.array(self.intercepts)
         assert(len(np.unique(points, axis=0)) == 4)

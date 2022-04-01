@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Network and classifier metrics.
 
@@ -20,8 +18,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-from __future__ import division
 
 import numpy as np
 
@@ -143,8 +139,8 @@ def rates_expt(net, data, weights):
     # neuron from data, per layer
     rates = [np.full((num_epochs, num_runs, i), np.nan)
              for i in net.sizes[1:]]
-    for epoch in xrange(num_epochs):
-        for run in xrange(num_runs):
+    for epoch in range(num_epochs):
+        for run in range(num_runs):
             ws = [w[run, epoch] for w in weights]
             net.reset(weights=ws)
             rs_l = [rs.mean(0) for rs in rates_data(net, data)]

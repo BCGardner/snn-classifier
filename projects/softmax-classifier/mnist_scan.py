@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 MNIST: encoded using scanlines as sequences of precisely-timed input spikes, to
 provide dimensionality reduction for constrained SNN sizes.
@@ -23,6 +21,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
+# %% === Imports ============================================================ #
 
 import numpy as np
 import time

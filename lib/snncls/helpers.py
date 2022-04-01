@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Helper functions.
 
@@ -22,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import gzip
-import cPickle as pkl
+import pickle as pkl
 import itertools
 import os
 
@@ -56,7 +54,7 @@ def load_data(path):
     Load data saved as gzipped pickle file.
     """
     with gzip.open(path, 'rb') as f:
-        data = pkl.load(f)
+        data = pkl.load(f, encoding='latin1')
     return data
 
 
@@ -94,9 +92,9 @@ def evaluate_clf(clf, data_tr, data_te=None, return_mats=True, report=False):
         rec['mat_te'] = metric.confusion_matrix(clf, data_te, False)
     # Report values
     if report:
-        print 'Train accuracy:\t{0:.1f} %'.format(100. - rec['tr_err'])
+        print('Train accuracy:\t{0:.1f} %'.format(100. - rec['tr_err']))
         if data_te is not None:
-            print 'Test accuracy:\t{0:.1f} %'.format(100. - rec['te_err'])
+            print('Test accuracy:\t{0:.1f} %'.format(100. - rec['te_err']))
     return rec
 
 
@@ -108,7 +106,7 @@ def mean_accs(data, k='tr_err'):
     num_rows, num_cols = data.shape
     num_runs = len(data[0, 0][k])
     accuracies = np.zeros((num_rows, num_cols, 2))
-    for i, j in itertools.product(xrange(num_rows), xrange(num_cols)):
+    for i, j in itertools.product(range(num_rows), range(num_cols)):
         accuracies[i, j, 0] = np.mean(100. - data[i, j][k])
         accuracies[i, j, 1] = np.std(100. - data[i, j][k])
     # Return SEMs

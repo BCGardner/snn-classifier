@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Class definition used to playback scanline encoding for visualisation
 purposes.
@@ -64,7 +62,7 @@ class Playback(object):
         ax.set_xticks(np.arange(0, self.x_lim[1] + 4, 4))
         ax.set_yticks(np.arange(0, self.y_lim[1] + 4, 4))
         # Labels
-        ax.set_title('{}'.format(self.times[0]))
+        ax.set_title(f'{self.times[0]:.1f}')
 
     def setup_scanners(self, ax, recs):
         """
@@ -112,10 +110,10 @@ class Playback(object):
                 # Update activations
                 y, x = recs['addr'][idx][step]
                 acts[idx].set_xy((x, y))
-            ax.set_title('{}'.format(t))
+            ax.set_title(f'{t:.1f}')
             fig.canvas.draw()
             if prompt:
-                raw_input()
+                input()
             else:
                 time.sleep(self.wait)
             fig.canvas.flush_events()
@@ -162,14 +160,14 @@ class Playback(object):
                 l_spikes[idx].set_segments(segs)
                 # Shift sweeping line
                 l_sweep.set_xdata((t, t))
-            axes[0].set_title('{}'.format(t))
+            axes[0].set_title(f'{t:.1f}')
             fig.canvas.draw()
             if prompt:
-                raw_input()
+                input()
             else:
                 time.sleep(self.wait)
             fig.canvas.flush_events()
-        raw_input("press any key ")
+        input("press any key ")
 
 
 def crosses(scan):
@@ -234,7 +232,7 @@ def player(recs, times, scanners, wait=0.05):
         points.append(ax.plot(rec[0, 0], rec[0, 1], 'ko')[0])
 #    line1, = ax.plot(recs[0][0, 0], recs[0][0, 1], 'ko')
 #    points.append(line1)
-    ax.set_title('{}'.format(times[0]))
+    ax.set_title(f'{times[0]:.1f}')
     # Limits
     ax.set_xlim(x_lim + [-.2, .2])
     ax.set_ylim(y_lim + [-.2, .2])
@@ -247,7 +245,7 @@ def player(recs, times, scanners, wait=0.05):
 #        x, y = recs[0][step, :]
 #        points[0].set_xdata(x)
 #        points[0].set_ydata(y)
-        ax.set_title('{}'.format(t))
+        ax.set_title(f'{t:.1f}')
         fig.canvas.draw()
         time.sleep(wait)
         fig.canvas.flush_events()

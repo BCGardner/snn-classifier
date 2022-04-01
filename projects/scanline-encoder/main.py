@@ -1,5 +1,4 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
 Demonstration of scanline-encoding as a dynamic plot. Low resolution digits
 are used in this example, obtained from:
@@ -54,7 +53,7 @@ def main(opt):
     num_scanners = len(scanners)
     # Neurons
     nrns = []
-    for i in xrange(num_scanners):
+    for i in range(num_scanners):
         if opt.nrn == 'lif':
             nrns.append(neuron.LIF(dt, R=10.))
         elif opt.nrn == 'izh':
@@ -65,11 +64,11 @@ def main(opt):
             raise ValueError('Invalid neuron type')
     # Recorder
     rec = dict()
-    rec['r'] = [np.full((num_steps, 2), np.nan) for i in xrange(num_scanners)]
-    rec['i'] = [np.full(num_steps, np.nan) for i in xrange(num_scanners)]
-    rec['addr'] = [[] for i in xrange(num_scanners)]  # Stores [(row, col), ...]
+    rec['r'] = [np.full((num_steps, 2), np.nan) for i in range(num_scanners)]
+    rec['i'] = [np.full(num_steps, np.nan) for i in range(num_scanners)]
+    rec['addr'] = [[] for i in range(num_scanners)]  # Stores [(row, col), ...]
     rec['v'] = np.full((num_steps, num_scanners), np.nan)  # Nrn voltages
-    rec['spikes'] = [np.array([]) for i in xrange(num_scanners)]
+    rec['spikes'] = [np.array([]) for i in range(num_scanners)]
 
     # Scan data
     for step, t in enumerate(times):

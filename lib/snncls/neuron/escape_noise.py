@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Escape noise neuron model.
 
@@ -24,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 
 
-class LinearRate(object):
+class LinearRate():
     """Linear escape rate"""
     def __init__(self, theta, scale=1.0):
         self.theta = theta
@@ -37,7 +35,7 @@ class LinearRate(object):
         return self.scale
 
 
-class ExpRate(object):
+class ExpRate():
     """Exponential escape rate"""
     def __init__(self, theta, rho_0=0.01, thr_width=1.0):
         self.theta = theta

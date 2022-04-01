@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Plotting routines.
 
@@ -214,7 +212,7 @@ class Plotter(object):
         num_conn = ws.shape[1]
         # Assign epoch indices, flatten points
         epoch_idxs = np.concatenate([np.full(num_conn, idx) for idx in
-                                     xrange(num_epochs)])
+                                     range(num_epochs)])
         ws = ws.ravel()
         # Define bin edges
         w_edges = np.linspace(*w_lims, num=bins)
